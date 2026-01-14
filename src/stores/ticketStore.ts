@@ -1,0 +1,354 @@
+/**
+ * Ticket Store - Zustand state management for ticket records
+ * Task 21: Create ticket store
+ *
+ * Manages:
+ * - Ticket records list (tickets: TicketRecord[])
+ * - Loading state (isLoading, error)
+ * - Processing state (isProcessing - for OCR operations)
+ *
+ * Requirements: 2.1-2.6 (Ticket record management: create, view, edit, delete, filter)
+ * Requirements: 3.3 (Auto-sync when records change)
+ */
+
+import { create } from 'zustand';
+import { storageService } from '../services/storageService';
+import { googleAuthService } from '../services/googleAuthService';
+import { filterTickets, useFilterStore } from './filterStore';
+import type { TicketRecord, FilterOptions } from '../types/ticket';
+
+/**
+ * Ticket store state interface
+ */
+interface TicketState {
+  /** Array of all ticket records */
+  tickets: TicketRecord[];
+  /** Loading state for async operations */
+  isLoading: boolean;
+  /** Error message from failed operations */
+  error: string | null;
+  /** Processing state for OCR and other heavy operations */
+  isProcessing: boolean;
+}
+
+/**
+ * Ticket store actions interface
+ */
+interface TicketActions {
+  /**
+   * Load all tickets from local storage (IndexedDB)
+   * Sets isLoading during operation
+   */
+  loadTickets: () => Promise<void>;
+
+  /**
+   * Add a new ticket record
+   * @param ticket - The ticket record to add
+   */
+  addTicket: (ticket: TicketRecord) => Promise<void>;
+
+  /**
+   * Update an existing ticket record
+   * @param ticket - The ticket record with updated values
+   */
+  updateTicket: (ticket: TicketRecord) => Promise<void>;
+
+  /**
+   * Delete a ticket by ID
+   * @param id - The ticket ID to delete
+   */
+  deleteTicket: (id: string) => Promise<void>;
+
+  /**
+   * Sync tickets to cloud storage (Google Drive)
+   * Requirements: 3.3 (Auto-sync)
+   */
+  syncTickets: () => Promise<void>;
+
+  /**
+   * Set processing state (for OCR operations)
+   * @param isProcessing - Whether processing is in progress
+   */
+  setProcessing: (isProcessing: boolean) => void;
+
+  /**
+   * Clear error state
+   */
+  clearError: () => void;
+
+  /**
+   * Set error message
+   * @param error - Error message to display
+   */
+  setError: (error: string) => void;
+}
+
+/**
+ * Combined store type
+ */
+type TicketStore = TicketState & TicketActions;
+
+/**
+ * Initial state values
+ */
+const initialState: TicketState = {
+  tickets: [],
+  isLoading: false,
+  error: null,
+  isProcessing: false,
+};
+
+/**
+ * Ticket store for managing ticket records state
+ *
+ * Usage:
+ * ```tsx
+ * import { useTicketStore, selectFilteredTickets } from './stores/ticketStore';
+ *
+ * function TicketList() {
+ *   const { isLoading, error, loadTickets, addTicket } = useTicketStore();
+ *   const filteredTickets = useTicketStore(selectFilteredTickets);
+ *
+ *   useEffect(() => {
+ *     loadTickets();
+ *   }, []);
+ *
+ *   if (isLoading) return <div>Loading...</div>;
+ *   if (error) return <div>Error: {error}</div>;
+ *
+ *   return (
+ *     <div>
+ *       {filteredTickets.map(ticket => (
+ *         <TicketCard key={ticket.id} ticket={ticket} />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ */
+export const useTicketStore = create<TicketStore>((set) => ({
+  // Initial state
+  ...initialState,
+
+  // Actions
+  loadTickets: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const tickets = await storageService.getAllTickets();
+      set({ tickets, isLoading: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load tickets';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  addTicket: async (ticket: TicketRecord) => {
+    set({ error: null });
+
+    try {
+      await storageService.saveTicket(ticket);
+
+      // Update local state
+      set((state) => ({
+        tickets: [...state.tickets, ticket],
+      }));
+
+      // Auto-sync in background if logged in (fire and forget)
+      if (googleAuthService.isAuthorized()) {
+        // Don't await - let it run in background
+        storageService.syncToCloud()
+          .then(async () => {
+            // Reload tickets to get updated sync status
+            const tickets = await storageService.getAllTickets();
+            set({ tickets });
+          })
+          .catch((syncError) => {
+            console.warn('Auto-sync after add failed:', syncError);
+          });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add ticket';
+      set({ error: errorMessage });
+      throw error;
+    }
+  },
+
+  updateTicket: async (ticket: TicketRecord) => {
+    set({ error: null });
+
+    try {
+      await storageService.updateTicket(ticket);
+
+      // Update local state
+      set((state) => ({
+        tickets: state.tickets.map((t) => (t.id === ticket.id ? ticket : t)),
+      }));
+
+      // Auto-sync in background if logged in (fire and forget)
+      if (googleAuthService.isAuthorized()) {
+        storageService.syncToCloud()
+          .then(async () => {
+            const tickets = await storageService.getAllTickets();
+            set({ tickets });
+          })
+          .catch((syncError) => {
+            console.warn('Auto-sync after update failed:', syncError);
+          });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update ticket';
+      set({ error: errorMessage });
+      throw error;
+    }
+  },
+
+  deleteTicket: async (id: string) => {
+    set({ error: null });
+
+    try {
+      await storageService.deleteTicket(id);
+
+      // Update local state
+      set((state) => ({
+        tickets: state.tickets.filter((t) => t.id !== id),
+      }));
+
+      // Process sync queue only (don't do full merge which would restore deleted items)
+      if (googleAuthService.isAuthorized()) {
+        storageService.processSyncQueueOnly()
+          .catch((syncError) => {
+            console.warn('Sync queue processing after delete failed:', syncError);
+          });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete ticket';
+      set({ error: errorMessage });
+      throw error;
+    }
+  },
+
+  syncTickets: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await storageService.syncToCloud();
+
+      // Reload tickets after sync to get updated sync status
+      const tickets = await storageService.getAllTickets();
+      set({ tickets, isLoading: false });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sync tickets';
+      set({ error: errorMessage, isLoading: false });
+      throw error;
+    }
+  },
+
+  setProcessing: (isProcessing: boolean) => {
+    set({ isProcessing });
+  },
+
+  clearError: () => {
+    set({ error: null });
+  },
+
+  setError: (error: string) => {
+    set({ error });
+  },
+}));
+
+/**
+ * Selector to get filtered tickets based on current filter state
+ *
+ * Usage:
+ * ```tsx
+ * const filteredTickets = useTicketStore(selectFilteredTickets);
+ * ```
+ */
+export const selectFilteredTickets = (state: TicketStore): TicketRecord[] => {
+  const filterState = useFilterStore.getState();
+  const filters: FilterOptions = {
+    month: filterState.month,
+    direction: filterState.direction,
+    searchText: filterState.searchText,
+  };
+
+  return filterTickets(state.tickets, filters);
+};
+
+/**
+ * Selector to get ticket by ID
+ *
+ * Usage:
+ * ```tsx
+ * const ticket = useTicketStore((state) => selectTicketById(state, ticketId));
+ * ```
+ */
+export const selectTicketById = (state: TicketStore, id: string): TicketRecord | undefined => {
+  return state.tickets.find((ticket) => ticket.id === id);
+};
+
+/**
+ * Selector to get tickets sorted by travel date (newest first)
+ *
+ * Usage:
+ * ```tsx
+ * const sortedTickets = useTicketStore(selectTicketsSortedByDate);
+ * ```
+ */
+export const selectTicketsSortedByDate = (state: TicketStore): TicketRecord[] => {
+  return [...state.tickets].sort((a, b) => {
+    // Sort by travel date first, then by travel time
+    const dateCompare = b.travelDate.localeCompare(a.travelDate);
+    if (dateCompare !== 0) return dateCompare;
+    return b.travelTime.localeCompare(a.travelTime);
+  });
+};
+
+/**
+ * Selector to get tickets that need syncing
+ *
+ * Usage:
+ * ```tsx
+ * const pendingTickets = useTicketStore(selectPendingSyncTickets);
+ * ```
+ */
+export const selectPendingSyncTickets = (state: TicketStore): TicketRecord[] => {
+  return state.tickets.filter(
+    (ticket) => ticket.syncStatus === 'pending' || ticket.syncStatus === 'local'
+  );
+};
+
+/**
+ * Selector to get ticket count
+ *
+ * Usage:
+ * ```tsx
+ * const count = useTicketStore(selectTicketCount);
+ * ```
+ */
+export const selectTicketCount = (state: TicketStore): number => {
+  return state.tickets.length;
+};
+
+/**
+ * Get unique months from tickets for filter dropdown
+ *
+ * Usage:
+ * ```tsx
+ * const months = useTicketStore(selectAvailableMonths);
+ * ```
+ */
+export const selectAvailableMonths = (state: TicketStore): string[] => {
+  const monthSet = new Set<string>();
+
+  state.tickets.forEach((ticket) => {
+    // Extract YYYY-MM from YYYY-MM-DD
+    const month = ticket.travelDate.substring(0, 7);
+    monthSet.add(month);
+  });
+
+  // Sort months in descending order (newest first)
+  return Array.from(monthSet).sort((a, b) => b.localeCompare(a));
+};

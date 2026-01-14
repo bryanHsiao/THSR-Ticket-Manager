@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx claude-code-spec-workflow:*)",
+      "Bash(dir /s /b \"C:\\\\Users\\\\siaob\\\\code\\\\20260112-claude-code-spec-workflow\")",
+      "Bash(findstr:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npm create vite@latest . -- --template react-ts)",
+      "Bash(npm install:*)",
+      "Bash(timeout 10 npm run dev:*)",
+      "Bash(claude-code-spec-workflow get-tasks:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx tsc:*)",
+      "Bash(claude-code-spec-workflow get-steering-context:*)",
+      "Bash(claude-code-spec-workflow:*)",
+      "Bash(npx tailwindcss:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 5 npm run dev)",
+      "Bash(npx eslint:*)",
+      "Bash(if [ -d \"C:\\\\Users\\\\siaob\\\\code\\\\20260112-claude-code-spec-workflow\\\\src\\\\utils\" ])",
+      "Bash(then ls -la \"C:\\\\Users\\\\siaob\\\\code\\\\20260112-claude-code-spec-workflow\\\\src\\\\utils\")",
+      "Bash(else echo \"utils directory does not exist\")",
+      "Bash(fi)",
+      "Bash(npm run lint:*)",
+      "Bash(dir \"C:\\\\Users\\\\siaob\\\\code\\\\20260112-claude-code-spec-workflow\\\\specs\\\\thsr-ticket-manager\\\\src\")",
+      "Bash(npm show:*)",
+      "Bash(dir \"C:\\\\Users\\\\siaob\\\\code\\\\20260112-claude-code-spec-workflow\\\\specs\\\\thsr-ticket-manager\" /s /b)",
+      "Bash(npx vitest:*)",
+      "Bash(npm list:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run:*)",
+      "Bash(dir:*)",
+      "Bash(node scripts/create-placeholder-icons.js:*)",
+      "Bash(timeout:*)",
+      "Bash(copy:*)"
+    ]
+  }
+}
