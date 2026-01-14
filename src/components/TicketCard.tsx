@@ -24,6 +24,8 @@ export interface TicketCardProps {
   onDelete: () => void;
   /** Callback when view image button is clicked (optional) */
   onViewImage?: () => void;
+  /** Callback when download receipt button is clicked (optional) */
+  onDownloadReceipt?: () => void;
 }
 
 /**
@@ -145,7 +147,7 @@ function getMissingFields(ticket: TicketRecord): string[] {
  * - Traditional Chinese interface
  * - Visual indicator for incomplete data
  */
-export function TicketCard({ ticket, onEdit, onDelete, onViewImage }: TicketCardProps) {
+export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadReceipt }: TicketCardProps) {
   const syncConfig = getSyncStatusConfig(ticket.syncStatus);
   const directionText = getDirectionText(ticket.direction);
   const missingFields = getMissingFields(ticket);
@@ -296,6 +298,35 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage }: TicketCard
               />
             </svg>
           </button>
+
+          {/* Download Receipt Button */}
+          {onDownloadReceipt && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownloadReceipt();
+              }}
+              className="
+                p-2.5
+                text-green-600 dark:text-green-400
+                bg-green-50 dark:bg-green-900/20
+                hover:bg-green-100 dark:hover:bg-green-900/40
+                rounded-lg
+                transition-colors duration-200
+              "
+              aria-label={`下載車票 ${ticket.ticketNumber} 的電子憑證`}
+              title="下載憑證"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Date and Time */}

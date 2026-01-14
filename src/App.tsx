@@ -314,6 +314,22 @@ function AppContent() {
     }
   }, [deleteTicket]);
 
+  /**
+   * Handle download receipt from TicketList
+   * Copies the command to clipboard for user to run in terminal
+   */
+  const handleDownloadReceipt = useCallback((ticket: TicketRecord) => {
+    const cmd = ticket.bookingCode
+      ? `npm run receipt -- --date=${ticket.travelDate} --from=${ticket.departure} --to=${ticket.destination} --booking=${ticket.bookingCode}`
+      : `npm run receipt -- --date=${ticket.travelDate} --from=${ticket.departure} --to=${ticket.destination} --ticket=${ticket.ticketNumber}`;
+
+    navigator.clipboard.writeText(cmd).then(() => {
+      alert(`指令已複製！\n\n在專案目錄執行：\n${cmd}`);
+    }).catch(() => {
+      alert(`請執行以下指令：\n\n${cmd}`);
+    });
+  }, []);
+
   // Show loading state during initialization
   if (!isInitialized) {
     return (
@@ -385,6 +401,7 @@ function AppContent() {
           <TicketList
             onEdit={handleEdit}
             onDelete={handleDelete}
+            onDownloadReceipt={handleDownloadReceipt}
           />
         </div>
       </main>

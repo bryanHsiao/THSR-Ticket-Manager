@@ -29,6 +29,7 @@ export interface TicketRecord {
   createdAt: string;                   // Created time ISO 8601
   updatedAt: string;                   // Updated time ISO 8601
   syncStatus: TicketSyncStatus;        // Sync status
+  bookingCode?: string;                // Booking code (8 digits, optional, for T Express)
 }
 
 /**

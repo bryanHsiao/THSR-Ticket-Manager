@@ -21,6 +21,7 @@ import { useFilterStore, filterTickets } from '../stores/filterStore';
 import { TicketCard } from './TicketCard';
 import { FilterBar } from './FilterBar';
 import { ExportButton } from './ExportButton';
+import { DownloadReceiptModal } from './DownloadReceiptModal';
 import type { TicketRecord } from '../types/ticket';
 
 /**
@@ -35,6 +36,8 @@ export interface TicketListProps {
   onDelete: (id: string) => void;
   /** Whether the list is loading (optional - if not provided, uses store) */
   isLoading?: boolean;
+  /** Callback when download receipt is confirmed */
+  onDownloadReceipt?: (ticket: TicketRecord) => void;
 }
 
 /**
@@ -427,11 +430,13 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
  * />
  * ```
  */
-export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: propIsLoading }: TicketListProps) {
+export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: propIsLoading, onDownloadReceipt }: TicketListProps) {
   // State for delete confirmation dialog
   const [ticketToDelete, setTicketToDelete] = useState<TicketRecord | null>(null);
   // State for image viewer modal
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
+  // State for download receipt modal
+  const [ticketToDownload, setTicketToDownload] = useState<TicketRecord | null>(null);
 
   // Get ticket store state and actions
   const storeTickets = useTicketStore((state) => state.tickets);
@@ -532,6 +537,30 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     setViewingImageUrl(null);
   }, []);
 
+  /**
+   * Handle download receipt button click - show confirmation modal
+   */
+  const handleDownloadReceiptClick = useCallback((ticket: TicketRecord) => {
+    setTicketToDownload(ticket);
+  }, []);
+
+  /**
+   * Handle download receipt confirmation
+   */
+  const handleConfirmDownloadReceipt = useCallback(() => {
+    if (ticketToDownload && onDownloadReceipt) {
+      onDownloadReceipt(ticketToDownload);
+    }
+    setTicketToDownload(null);
+  }, [ticketToDownload, onDownloadReceipt]);
+
+  /**
+   * Handle download receipt cancellation
+   */
+  const handleCancelDownloadReceipt = useCallback(() => {
+    setTicketToDownload(null);
+  }, []);
+
   // Render loading state
   if (isLoading && tickets.length === 0) {
     return <LoadingState />;
@@ -591,6 +620,7 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
               onEdit={() => onEdit(ticket.id)}
               onDelete={() => handleDeleteClick(ticket)}
               onViewImage={ticket.imageUrl ? () => handleViewImage(ticket.imageUrl!) : undefined}
+              onDownloadReceipt={onDownloadReceipt ? () => handleDownloadReceiptClick(ticket) : undefined}
             />
           ))}
         </div>
@@ -610,6 +640,15 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
         <ImageViewerModal
           imageUrl={viewingImageUrl}
           onClose={handleCloseImageViewer}
+        />
+      )}
+
+      {/* Download Receipt Modal */}
+      {ticketToDownload && (
+        <DownloadReceiptModal
+          ticket={ticketToDownload}
+          onConfirm={handleConfirmDownloadReceipt}
+          onCancel={handleCancelDownloadReceipt}
         />
       )}
     </>
