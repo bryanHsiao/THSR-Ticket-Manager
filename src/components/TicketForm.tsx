@@ -362,7 +362,9 @@ export function TicketForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="flex flex-col h-full">
+      {/* Scrollable form content */}
+      <div className="flex-1 overflow-y-auto space-y-3 sm:space-y-5 pb-2">
       {/* Ticket Number */}
       <div>
         <label
@@ -382,7 +384,8 @@ export function TicketForm({
           maxLength={13}
           disabled={isSubmitting}
           className={`
-            w-full px-4 py-2.5
+            w-full px-3 py-2 sm:px-4 sm:py-2.5
+            text-sm sm:text-base
             text-gray-900 dark:text-gray-100
             bg-white dark:bg-gray-800
             border rounded-lg
@@ -413,8 +416,40 @@ export function TicketForm({
         )}
       </div>
 
-      {/* Date and Time - Stack on mobile, side by side on larger screens */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+      {/* Purpose - Moved to top */}
+      <div>
+        <label
+          htmlFor="purpose"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+        >
+          出差目的
+        </label>
+        <textarea
+          id="purpose"
+          name="purpose"
+          value={formData.purpose}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          placeholder="請輸入出差目的（選填）"
+          rows={1}
+          disabled={isSubmitting}
+          className="
+            w-full px-3 py-2 sm:px-4 sm:py-2.5
+            text-sm sm:text-base
+            text-gray-900 dark:text-gray-100
+            bg-white dark:bg-gray-800
+            border border-gray-300 dark:border-gray-600 rounded-lg
+            focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400
+            focus:ring-offset-2 dark:focus:ring-offset-gray-900
+            transition-colors duration-200
+            disabled:opacity-50 disabled:cursor-not-allowed
+            resize-none
+          "
+        />
+      </div>
+
+      {/* Date and Time - Always side by side */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-4">
         {/* Travel Date */}
         <div className="min-w-0">
           <label
@@ -438,8 +473,8 @@ export function TicketForm({
               onBlur={handleBlur}
               disabled={isSubmitting}
               className={`
-                w-full min-w-0 pl-10 pr-2 py-2.5
-                text-sm
+                w-full min-w-0 pl-8 pr-1 py-2 sm:pl-10 sm:pr-2 sm:py-2.5
+                text-xs sm:text-sm
                 text-gray-900 dark:text-gray-100
                 bg-white dark:bg-gray-800
                 border rounded-lg
@@ -487,8 +522,8 @@ export function TicketForm({
               onBlur={handleBlur}
               disabled={isSubmitting}
               className={`
-                w-full min-w-0 pl-10 pr-2 py-2.5
-                text-sm
+                w-full min-w-0 pl-8 pr-1 py-2 sm:pl-10 sm:pr-2 sm:py-2.5
+                text-xs sm:text-sm
                 text-gray-900 dark:text-gray-100
                 bg-white dark:bg-gray-800
                 border rounded-lg
@@ -514,47 +549,13 @@ export function TicketForm({
         </div>
       </div>
 
-      {/* Direction */}
-      <div>
-        <label
-          htmlFor="direction"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-        >
-          方向 <span className="text-red-500">*</span>
-        </label>
-        <select
-          id="direction"
-          name="direction"
-          value={formData.direction}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          disabled={isSubmitting}
-          className={`
-            w-full px-4 py-2.5
-            text-gray-900 dark:text-gray-100
-            bg-white dark:bg-gray-800
-            border rounded-lg
-            focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900
-            transition-colors duration-200
-            disabled:opacity-50 disabled:cursor-not-allowed
-            border-gray-300 dark:border-gray-600 focus:ring-orange-400 focus:border-orange-400
-          `}
-        >
-          {DIRECTION_OPTIONS.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Departure and Destination - Side by side on larger screens */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Departure and Destination - Always side by side */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-4">
         {/* Departure Station */}
         <div>
           <label
             htmlFor="departure"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+            className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
           >
             起站 <span className="text-red-500">*</span>
           </label>
@@ -566,7 +567,8 @@ export function TicketForm({
             onBlur={handleBlur}
             disabled={isSubmitting}
             className={`
-              w-full px-4 py-2.5
+              w-full px-2 py-2 sm:px-3 sm:py-2.5
+              text-xs sm:text-sm
               text-gray-900 dark:text-gray-100
               bg-white dark:bg-gray-800
               border rounded-lg
@@ -581,7 +583,7 @@ export function TicketForm({
             aria-invalid={!!getFieldError('departure')}
             aria-describedby={getFieldError('departure') ? 'departure-error' : undefined}
           >
-            <option value="">請選擇起站</option>
+            <option value="">起站</option>
             {THSR_STATIONS.map(station => (
               <option key={station} value={station}>
                 {station}
@@ -599,7 +601,7 @@ export function TicketForm({
         <div>
           <label
             htmlFor="destination"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+            className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
           >
             迄站 <span className="text-red-500">*</span>
           </label>
@@ -611,7 +613,8 @@ export function TicketForm({
             onBlur={handleBlur}
             disabled={isSubmitting}
             className={`
-              w-full px-4 py-2.5
+              w-full px-2 py-2 sm:px-3 sm:py-2.5
+              text-xs sm:text-sm
               text-gray-900 dark:text-gray-100
               bg-white dark:bg-gray-800
               border rounded-lg
@@ -626,7 +629,7 @@ export function TicketForm({
             aria-invalid={!!getFieldError('destination')}
             aria-describedby={getFieldError('destination') ? 'destination-error' : undefined}
           >
-            <option value="">請選擇迄站</option>
+            <option value="">迄站</option>
             {THSR_STATIONS.map(station => (
               <option key={station} value={station}>
                 {station}
@@ -641,39 +644,11 @@ export function TicketForm({
         </div>
       </div>
 
-      {/* Purpose */}
-      <div>
-        <label
-          htmlFor="purpose"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
-        >
-          出差目的
-        </label>
-        <textarea
-          id="purpose"
-          name="purpose"
-          value={formData.purpose}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          placeholder="請輸入出差目的（選填）"
-          rows={3}
-          disabled={isSubmitting}
-          className="
-            w-full px-4 py-2.5
-            text-gray-900 dark:text-gray-100
-            bg-white dark:bg-gray-800
-            border border-gray-300 dark:border-gray-600 rounded-lg
-            focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400
-            focus:ring-offset-2 dark:focus:ring-offset-gray-900
-            transition-colors duration-200
-            disabled:opacity-50 disabled:cursor-not-allowed
-            resize-none
-          "
-        />
       </div>
+      {/* End scrollable content */}
 
-      {/* Form Actions */}
-      <div className="flex flex-col-reverse sm:flex-row gap-4 pt-4">
+      {/* Form Actions - Fixed at bottom */}
+      <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 pt-4 mt-2 flex flex-col-reverse sm:flex-row gap-3 bg-white dark:bg-gray-800">
         <button
           type="button"
           onClick={onCancel}

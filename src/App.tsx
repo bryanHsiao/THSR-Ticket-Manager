@@ -397,11 +397,11 @@ function AppContent() {
         >
           <div className="min-h-screen flex items-center justify-center p-4">
             <div
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden"
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 flex items-center justify-between">
+              <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 flex items-center justify-between">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
                   編輯車票
                 </h2>
@@ -417,7 +417,7 @@ function AppContent() {
               </div>
 
               {/* Modal Content */}
-              <div className="p-4 sm:p-6">
+              <div className="flex-1 min-h-0 p-4 sm:p-6">
                 <TicketForm
                   initialData={appState.editingTicket}
                   isEditMode={true}
@@ -438,11 +438,11 @@ function AppContent() {
         >
           <div className="min-h-screen flex items-center justify-center p-4">
             <div
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden"
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 flex items-center justify-between">
+              <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 flex items-center justify-between">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-gray-100">
                   確認車票資訊
                 </h2>
@@ -457,6 +457,8 @@ function AppContent() {
                 </button>
               </div>
 
+              {/* Scrollable content area */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
               {/* Image Preview */}
               <div className="px-6 pt-4">
                 <img
@@ -483,7 +485,7 @@ function AppContent() {
                 </div>
               )}
 
-              {/* Modal Content */}
+              {/* Modal Content with Form */}
               <div className="p-4 sm:p-6">
                 <TicketForm
                   initialData={{
@@ -498,6 +500,7 @@ function AppContent() {
                   onSubmit={handleOCRConfirm}
                   onCancel={handleOCRCancel}
                 />
+              </div>
               </div>
             </div>
           </div>
