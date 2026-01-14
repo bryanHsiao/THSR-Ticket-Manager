@@ -51,6 +51,7 @@ export interface TicketFormData {
   departure: string;
   destination: string;
   purpose: string;
+  bookingCode: string;
 }
 
 /**
@@ -64,6 +65,7 @@ export interface TicketFormErrors {
   departure?: string;
   destination?: string;
   purpose?: string;
+  bookingCode?: string;
 }
 
 /**
@@ -193,6 +195,7 @@ export function TicketForm({
     departure: initialData?.departure || '',
     destination: initialData?.destination || '',
     purpose: initialData?.purpose || '',
+    bookingCode: initialData?.bookingCode || '',
   });
 
   // Validation errors state
@@ -346,6 +349,7 @@ export function TicketForm({
       departure: true,
       destination: true,
       purpose: true,
+      bookingCode: true,
     });
 
     // Validate form
@@ -639,6 +643,40 @@ export function TicketForm({
             </p>
           )}
         </div>
+      </div>
+
+      {/* Booking Code (Optional) */}
+      <div>
+        <label
+          htmlFor="bookingCode"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+        >
+          訂位代號
+        </label>
+        <input
+          type="text"
+          id="bookingCode"
+          name="bookingCode"
+          value={formData.bookingCode}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          placeholder="請輸入 8 碼訂位代號（選填）"
+          maxLength={8}
+          disabled={isSubmitting}
+          className="
+            w-full px-4 py-2.5
+            text-gray-900 dark:text-gray-100
+            bg-white dark:bg-gray-800
+            border border-gray-300 dark:border-gray-600 rounded-lg
+            focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400
+            focus:ring-offset-2 dark:focus:ring-offset-gray-900
+            transition-colors duration-200
+            disabled:opacity-50 disabled:cursor-not-allowed
+          "
+        />
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          T Express 手機票可使用訂位代號查詢憑證
+        </p>
       </div>
 
       {/* Purpose */}
