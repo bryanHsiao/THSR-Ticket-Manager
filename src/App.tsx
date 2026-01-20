@@ -106,8 +106,10 @@ function AppContent() {
   const deleteTicket = useTicketStore((state) => state.deleteTicket);
   const setProcessing = useTicketStore((state) => state.setProcessing);
   const clearError = useTicketStore((state) => state.clearError);
+  const clearSyncError = useTicketStore((state) => state.clearSyncError);
   const tickets = useTicketStore((state) => state.tickets);
   const isProcessing = useTicketStore((state) => state.isProcessing);
+  const syncError = useTicketStore((state) => state.syncError);
 
   // Get user store state for Header component
   const { isGoogleLoggedIn, lastSyncTime } = useUserStore();
@@ -119,6 +121,16 @@ function AppContent() {
 
   // Get syncTickets action
   const syncTickets = useTicketStore((state) => state.syncTickets);
+
+  // Auto-dismiss sync error toast after 5 seconds
+  useEffect(() => {
+    if (syncError) {
+      const timer = setTimeout(() => {
+        clearSyncError();
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncError, clearSyncError]);
 
   // Initialize app on mount
   useEffect(() => {
@@ -597,6 +609,36 @@ function AppContent() {
         onClose={() => setIsSettingsOpen(false)}
         onSave={handleSettingsSave}
       />
+
+      {/* Sync Error Toast - shows when cloud sync fails but local save succeeded */}
+      {syncError && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm animate-slide-up">
+          <div className="bg-amber-50 dark:bg-amber-900/90 border border-amber-300 dark:border-amber-700 rounded-lg shadow-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                  已儲存至本機
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1 break-words">
+                  {syncError}
+                </p>
+              </div>
+              <button
+                onClick={clearSyncError}
+                className="p-1 text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 rounded transition-colors"
+                aria-label="關閉"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

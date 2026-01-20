@@ -29,6 +29,8 @@ interface TicketState {
   error: string | null;
   /** Processing state for OCR and other heavy operations */
   isProcessing: boolean;
+  /** Sync error message (shown as toast, doesn't block UI) */
+  syncError: string | null;
 }
 
 /**
@@ -81,6 +83,11 @@ interface TicketActions {
    * @param error - Error message to display
    */
   setError: (error: string) => void;
+
+  /**
+   * Clear sync error state
+   */
+  clearSyncError: () => void;
 }
 
 /**
@@ -96,6 +103,7 @@ const initialState: TicketState = {
   isLoading: false,
   error: null,
   isProcessing: false,
+  syncError: null,
 };
 
 /**
@@ -145,29 +153,33 @@ export const useTicketStore = create<TicketStore>((set) => ({
   },
 
   addTicket: async (ticket: TicketRecord) => {
-    set({ error: null });
+    set({ error: null, syncError: null });
 
     try {
       await storageService.saveTicket(ticket);
 
-      // Update local state
+      // Update local state - this is the success point
       set((state) => ({
         tickets: [...state.tickets, ticket],
       }));
 
       // Auto-sync in background if logged in (fire and forget)
+      // Sync errors won't block the UI, they'll show as a toast
       if (googleAuthService.isAuthorized()) {
-        // Don't await - let it run in background
         storageService.syncToCloud()
           .then(async () => {
             // Reload tickets to get updated sync status
             const tickets = await storageService.getAllTickets();
-            set({ tickets });
+            set({ tickets, syncError: null });
           })
           .catch((syncError) => {
+            const syncErrorMessage = syncError instanceof Error ? syncError.message : '同步失敗';
             console.warn('Auto-sync after add failed:', syncError);
+            // Set syncError for toast display, but don't block UI
+            set({ syncError: `同步失敗：${syncErrorMessage}` });
           });
       }
+      // Don't throw - local save was successful
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to add ticket';
       set({ error: errorMessage });
@@ -255,6 +267,10 @@ export const useTicketStore = create<TicketStore>((set) => ({
 
   setError: (error: string) => {
     set({ error });
+  },
+
+  clearSyncError: () => {
+    set({ syncError: null });
   },
 }));
 
