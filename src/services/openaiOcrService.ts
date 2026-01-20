@@ -3,11 +3,21 @@
  * Uses GPT-4 Vision API for ticket OCR recognition
  *
  * Much faster and more accurate than Tesseract.js
+ *
+ * Implements fallback error handling:
+ * - Network errors, timeouts, 5xx, 429 → OCRFallbackError (should fallback)
+ * - 401, 403 → OCRNonFallbackError (should not fallback)
  */
 
-import { OPENAI_API_KEY, OPENAI_API_BASE, isOpenAIConfigured } from '../config/openai';
+import { getOpenAIApiKey, getOpenAIApiBase, isOpenAIConfigured } from '../config/openai';
 import { blobToBase64 } from '../utils/imageUtils';
 import type { OCRResult, TravelDirection } from '../types/ticket';
+import { OCRFallbackError, OCRNonFallbackError, type IOCREngine, type OCREngineType } from '../types/ocr';
+
+/**
+ * Default timeout for API requests (30 seconds)
+ */
+const DEFAULT_TIMEOUT_MS = 30000;
 
 /**
  * THSR station names for validation
@@ -27,35 +37,57 @@ const STATION_INDEX: Record<string, number> = {
 
 /**
  * OpenAI OCR Service class
+ * Implements IOCREngine interface for use with OCRManager
  */
-class OpenAIOcrService {
+class OpenAIOcrService implements IOCREngine {
+  readonly engineType: OCREngineType = 'openai';
+  readonly priority: number = 1; // Highest priority
+
+  /**
+   * Check if OpenAI OCR is available
+   */
+  isAvailable(): boolean {
+    return isOpenAIConfigured();
+  }
+
   /**
    * Recognize ticket information from image using GPT-4 Vision
    *
    * @param file - Image file to process
+   * @param timeoutMs - Timeout in milliseconds (default: 30000)
    * @returns Promise<OCRResult> - Extracted ticket information
+   * @throws OCRFallbackError - For network errors, timeouts, 5xx, 429
+   * @throws OCRNonFallbackError - For 401, 403
    */
-  async recognizeTicket(file: File): Promise<OCRResult> {
+  async recognizeTicket(file: File, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<OCRResult> {
     if (!isOpenAIConfigured()) {
-      throw new Error('OpenAI API 未設定。請在 .env 檔案中設定 VITE_OPENAI_API_KEY。');
+      throw new OCRNonFallbackError(
+        'OpenAI API 未設定。請在 .env 檔案中設定 VITE_OPENAI_API_KEY。',
+        'openai'
+      );
     }
 
     // Convert image to base64
     const base64Image = await blobToBase64(file);
 
-    // Call GPT-4 Vision API
-    const response = await fetch(`${OPENAI_API_BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `你是台灣高鐵車票 OCR 辨識專家。請從車票圖片中提取以下資訊並以 JSON 格式回傳：
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      // Call GPT-4 Vision API with abort signal
+      const response = await fetch(`${getOpenAIApiBase()}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getOpenAIApiKey()}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `你是台灣高鐵車票 OCR 辨識專家。請從車票圖片中提取以下資訊並以 JSON 格式回傳：
 - ticketNumber: 交易序號，格式為 XX-X-XX-X-XXX-XXXX（6組數字用連字號分隔），例如 02-1-18-1-364-0235 或 12-1-31-1-345-0036。通常在「信用卡」文字旁邊或下方。
 - travelDate: 乘車日期 (格式: YYYY-MM-DD)
 - travelTime: 發車時間 (格式: HH:mm)，自由座車票沒有時間則設為 null
@@ -67,39 +99,109 @@ class OpenAIOcrService {
 2. 請務必找出這組含連字號的號碼
 
 只回傳 JSON，不要有其他文字。如果無法辨識某欄位，該欄位設為 null。`
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: base64Image,
-                  detail: 'high',
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: base64Image,
+                    detail: 'high',
+                  },
                 },
-              },
-              {
-                type: 'text',
-                text: '請辨識這張高鐵車票的資訊',
-              },
-            ],
-          },
-        ],
-        max_tokens: 500,
-        temperature: 0,
-      }),
-    });
+                {
+                  type: 'text',
+                  text: '請辨識這張高鐵車票的資訊',
+                },
+              ],
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0,
+        }),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`OpenAI API 錯誤: ${errorData.error?.message || response.statusText}`);
+      // Handle HTTP errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error?.message || response.statusText;
+
+        // Check for fallback-worthy errors
+        if (response.status >= 500) {
+          throw new OCRFallbackError(
+            `OpenAI 伺服器錯誤: ${errorMessage}`,
+            'openai'
+          );
+        }
+
+        if (response.status === 429) {
+          throw new OCRFallbackError(
+            'OpenAI API 請求過於頻繁，請稍後再試',
+            'openai'
+          );
+        }
+
+        // Non-fallback errors (client errors like 401, 403)
+        if (response.status === 401 || response.status === 403) {
+          throw new OCRNonFallbackError(
+            `OpenAI API 授權錯誤: ${errorMessage}`,
+            'openai'
+          );
+        }
+
+        // Other client errors - don't fallback
+        throw new OCRNonFallbackError(
+          `OpenAI API 錯誤: ${errorMessage}`,
+          'openai'
+        );
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content || '';
+
+      // Parse the JSON response
+      return this.parseResponse(content);
+    } catch (error) {
+      // Re-throw OCR errors as-is
+      if (error instanceof OCRFallbackError || error instanceof OCRNonFallbackError) {
+        throw error;
+      }
+
+      // Handle abort (timeout)
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new OCRFallbackError(
+          `OpenAI API 請求逾時（超過 ${timeoutMs / 1000} 秒）`,
+          'openai'
+        );
+      }
+
+      // Handle network errors (fetch failed)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new OCRFallbackError(
+          '網路連線失敗，無法連接 OpenAI API',
+          'openai'
+        );
+      }
+
+      // Handle other network-like errors
+      if (error instanceof Error &&
+          (error.message.includes('network') ||
+           error.message.includes('Network') ||
+           error.message.includes('Failed to fetch') ||
+           error.message.includes('offline'))) {
+        throw new OCRFallbackError(
+          `網路錯誤: ${error.message}`,
+          'openai'
+        );
+      }
+
+      // Re-throw unknown errors
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-
-    // Parse the JSON response
-    return this.parseResponse(content);
   }
 
   /**

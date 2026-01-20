@@ -21,10 +21,11 @@ import { GoogleAuthButton } from './components/GoogleAuthButton';
 import { TicketList } from './components/TicketList';
 import { TicketUploader } from './components/TicketUploader';
 import { TicketForm, type TicketFormData } from './components/TicketForm';
-import { openaiOcrService } from './services/openaiOcrService';
-import { ocrService } from './services/ocrService';
-import { isOpenAIConfigured } from './config/openai';
+import { OCREngineIndicator } from './components/OCREngineIndicator';
+import { ocrManager } from './services/ocrManager';
 import { googleAuthService } from './services/googleAuthService';
+import { llmConfigService } from './services/llmConfigService';
+import type { OCREngineType, OCRResultWithMeta } from './types/ocr';
 import { blobToBase64 } from './utils/imageUtils';
 import type { TicketRecord } from './types/ticket';
 import type { SyncStatus } from './types/user';
@@ -41,14 +42,20 @@ interface AppState {
   ocrError: string | null;
   /** Whether the OCR preview modal is open */
   isOCRPreviewOpen: boolean;
-  /** The current OCR result being previewed */
-  ocrResult: import('./types/ticket').OCRResult | null;
+  /** The current OCR result being previewed (with engine metadata) */
+  ocrResult: OCRResultWithMeta | null;
   /** The original image file for upload */
   imageFile: File | null;
   /** Whether the edit modal is open */
   isEditModalOpen: boolean;
   /** The ticket being edited */
   editingTicket: TicketRecord | null;
+  /** Last OCR engine used */
+  lastOcrEngine: OCREngineType | null;
+  /** Whether OCR fallback was used */
+  ocrFallbackUsed: boolean;
+  /** Reason for OCR fallback */
+  ocrFallbackReason: string | null;
 }
 
 /**
@@ -63,6 +70,9 @@ const initialAppState: AppState = {
   imageFile: null,
   isEditModalOpen: false,
   editingTicket: null,
+  lastOcrEngine: null,
+  ocrFallbackUsed: false,
+  ocrFallbackReason: null,
 };
 
 /**
@@ -106,6 +116,14 @@ function AppContent() {
   // Initialize app on mount
   useEffect(() => {
     const initializeApp = async () => {
+      // Initialize LLM config from DRAPI (for OCR functionality)
+      try {
+        await llmConfigService.initialize();
+        console.log('LLM config initialized');
+      } catch (error) {
+        console.warn('Failed to initialize LLM config:', error);
+      }
+
       // Initialize user store from localStorage (restore login state)
       initializeUserStore();
 
@@ -126,27 +144,16 @@ function AppContent() {
         }
       }
 
-      // Pre-initialize OCR service for faster first recognition
-      try {
-        await ocrService.initialize();
-      } catch (error) {
-        console.error('Failed to initialize OCR service:', error);
-      }
-
       setIsInitialized(true);
     };
 
     initializeApp();
-
-    // Cleanup OCR service on unmount
-    return () => {
-      ocrService.terminate();
-    };
   }, [loadTickets, syncTickets]);
 
   /**
    * Handle image capture from TicketUploader
    * Performs OCR and shows preview modal for user confirmation
+   * Uses ocrManager for automatic fallback between engines
    */
   const handleImageCapture = useCallback(async (file: File) => {
     // Set processing state
@@ -155,14 +162,15 @@ function AppContent() {
       isProcessingOCR: true,
       progressMessage: '正在辨識車票...',
       ocrError: null,
+      lastOcrEngine: null,
+      ocrFallbackUsed: false,
+      ocrFallbackReason: null,
     }));
     setProcessing(true);
 
     try {
-      // Use OpenAI OCR if configured, otherwise fall back to Tesseract
-      const result = isOpenAIConfigured()
-        ? await openaiOcrService.recognizeTicket(file)
-        : await ocrService.recognizeTicket(file);
+      // Use ocrManager for automatic fallback handling
+      const result = await ocrManager.recognizeTicket(file);
 
       // Show OCR preview modal for user confirmation
       setAppState((prev) => ({
@@ -172,6 +180,9 @@ function AppContent() {
         imageFile: file,
         isProcessingOCR: false,
         progressMessage: '',
+        lastOcrEngine: result.engineUsed,
+        ocrFallbackUsed: result.fallbackUsed,
+        ocrFallbackReason: result.fallbackReason || null,
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'OCR辨識失敗';
@@ -484,6 +495,17 @@ function AppContent() {
                   className="w-full h-auto max-h-48 object-contain rounded-lg bg-gray-100 dark:bg-gray-700"
                 />
               </div>
+
+              {/* OCR Engine Indicator */}
+              {appState.ocrResult.engineUsed && (
+                <div className="mx-6 mt-4">
+                  <OCREngineIndicator
+                    engineUsed={appState.ocrResult.engineUsed}
+                    fallbackUsed={appState.ocrResult.fallbackUsed}
+                    fallbackReason={appState.ocrResult.fallbackReason}
+                  />
+                </div>
+              )}
 
               {/* OCR Confidence Indicator */}
               {appState.ocrResult.confidence < 0.7 && (
