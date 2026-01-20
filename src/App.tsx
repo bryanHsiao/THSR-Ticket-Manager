@@ -105,7 +105,6 @@ function AppContent() {
   const updateTicket = useTicketStore((state) => state.updateTicket);
   const deleteTicket = useTicketStore((state) => state.deleteTicket);
   const setProcessing = useTicketStore((state) => state.setProcessing);
-  const clearError = useTicketStore((state) => state.clearError);
   const tickets = useTicketStore((state) => state.tickets);
   const isProcessing = useTicketStore((state) => state.isProcessing);
 
@@ -187,9 +186,6 @@ function AppContent() {
       // Use ocrManager for automatic fallback handling
       const result = await ocrManager.recognizeTicket(file);
 
-      // Clear any previous ticketStore error before showing modal
-      clearError();
-
       // Show OCR preview modal for user confirmation
       setAppState((prev) => ({
         ...prev,
@@ -201,7 +197,6 @@ function AppContent() {
         lastOcrEngine: result.engineUsed,
         ocrFallbackUsed: result.fallbackUsed,
         ocrFallbackReason: result.fallbackReason || null,
-        submitError: null, // Clear any previous submit error
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'OCR辨識失敗';
@@ -215,7 +210,7 @@ function AppContent() {
     } finally {
       setProcessing(false);
     }
-  }, [setProcessing, clearError]);
+  }, [setProcessing]);
 
   /**
    * Handle OCR preview confirmation
@@ -510,25 +505,6 @@ function AppContent() {
                 </button>
               </div>
 
-              {/* Submit Error - Fixed at top, always visible */}
-              {appState.submitError && (
-                <div className="flex-shrink-0 mx-4 mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-red-800 dark:text-red-200">
-                        儲存失敗
-                      </p>
-                      <p className="text-xs text-red-700 dark:text-red-300 mt-1">
-                        {appState.submitError}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Scrollable content area */}
               <div className="flex-1 min-h-0 overflow-y-auto">
               {/* Image Preview */}
@@ -564,6 +540,25 @@ function AppContent() {
                       />
                     </svg>
                     <span>辨識信心度較低，請確認資訊是否正確</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Error - Show inside modal */}
+              {appState.submitError && (
+                <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                        儲存失敗
+                      </p>
+                      <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                        {appState.submitError}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
