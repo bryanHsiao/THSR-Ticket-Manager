@@ -14,6 +14,8 @@ const APP_CONFIG = {
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages 部署路徑
+  base: '/THSR-Ticket-Manager/',
   // 注入環境變數
   define: {
     'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(APP_CONFIG.GOOGLE_CLIENT_ID),
