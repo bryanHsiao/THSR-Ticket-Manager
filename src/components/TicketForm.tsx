@@ -682,6 +682,7 @@ export function TicketForm({
           T Express 手機票可使用訂位代號查詢憑證
         </p>
       </div>
+      </div>
       {/* End scrollable content */}
 
       {/* Form Actions - Fixed at bottom */}

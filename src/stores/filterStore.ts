@@ -28,6 +28,8 @@ interface FilterState {
   direction: DirectionFilter;
   /** Search text for ticket number or purpose */
   searchText: string | undefined;
+  /** Filter to show only tickets without downloaded receipts */
+  noReceipt: boolean;
 }
 
 /**
@@ -53,6 +55,12 @@ interface FilterActions {
   setSearchText: (text: string | undefined) => void;
 
   /**
+   * Set no receipt filter
+   * @param noReceipt - true to show only tickets without receipts
+   */
+  setNoReceipt: (noReceipt: boolean) => void;
+
+  /**
    * Clear all filters to default values
    */
   clearFilters: () => void;
@@ -70,6 +78,7 @@ const defaultFilterState: FilterState = {
   month: undefined,
   direction: 'all',
   searchText: undefined,
+  noReceipt: false,
 };
 
 /**
@@ -114,6 +123,10 @@ export const useFilterStore = create<FilterStore>((set) => ({
 
   setSearchText: (text: string | undefined) => {
     set({ searchText: text });
+  },
+
+  setNoReceipt: (noReceipt: boolean) => {
+    set({ noReceipt });
   },
 
   clearFilters: () => {

@@ -10,7 +10,9 @@
  * Requirements: 2.6 (Edit/delete buttons on hover)
  */
 
+import { useState, useEffect } from 'react';
 import type { TicketRecord, TicketSyncStatus, TravelDirection } from '../types/ticket';
+import { getReceiptFilePath, checkReceiptExists } from '../utils/receiptHelper';
 
 /**
  * Props for the TicketCard component
@@ -152,6 +154,35 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
   const directionText = getDirectionText(ticket.direction);
   const missingFields = getMissingFields(ticket);
   const hasIncompleteData = missingFields.length > 0;
+
+  // Check if local receipt file exists
+  const [receiptPath, setReceiptPath] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Only check if we have all required fields
+    if (ticket.travelDate && ticket.departure && ticket.destination && ticket.ticketNumber) {
+      const path = getReceiptFilePath({
+        travelDate: ticket.travelDate,
+        departure: ticket.departure,
+        destination: ticket.destination,
+        ticketNumber: ticket.ticketNumber,
+        bookingCode: ticket.bookingCode,
+      });
+
+      checkReceiptExists(path).then((exists) => {
+        setReceiptPath(exists ? path : null);
+      });
+    } else {
+      setReceiptPath(null);
+    }
+  }, [ticket.travelDate, ticket.departure, ticket.destination, ticket.ticketNumber, ticket.bookingCode]);
+
+  // Open receipt in new tab
+  const handleViewReceipt = () => {
+    if (receiptPath) {
+      window.open(receiptPath, '_blank');
+    }
+  };
 
   return (
     <div
@@ -298,6 +329,35 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
               />
             </svg>
           </button>
+
+          {/* View Receipt Button - Show if local receipt exists */}
+          {receiptPath && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewReceipt();
+              }}
+              className="
+                p-2.5
+                text-purple-600 dark:text-purple-400
+                bg-purple-50 dark:bg-purple-900/20
+                hover:bg-purple-100 dark:hover:bg-purple-900/40
+                rounded-lg
+                transition-colors duration-200
+              "
+              aria-label={`檢視車票 ${ticket.ticketNumber} 的電子憑證`}
+              title="檢視憑證"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </button>
+          )}
 
           {/* Download Receipt Button */}
           {onDownloadReceipt && (

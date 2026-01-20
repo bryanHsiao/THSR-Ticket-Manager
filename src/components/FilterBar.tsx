@@ -11,7 +11,6 @@
  */
 
 import { useFilterStore, type DirectionFilter } from '../stores/filterStore';
-import { getMonthOptions } from '../utils/dateUtils';
 
 /**
  * Direction button configuration
@@ -51,19 +50,18 @@ export function FilterBar() {
     month,
     direction,
     searchText,
+    noReceipt,
     setMonth,
     setDirection,
     setSearchText,
+    setNoReceipt,
     clearFilters,
   } = useFilterStore();
-
-  // Get month options from dateUtils
-  const monthOptions = getMonthOptions();
 
   /**
    * Handle month filter change
    */
-  const handleMonthChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleMonthChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setMonth(value || undefined);
   };
@@ -82,13 +80,15 @@ export function FilterBar() {
   const hasActiveFilters =
     month !== undefined ||
     direction !== 'all' ||
-    (searchText !== undefined && searchText !== '');
+    (searchText !== undefined && searchText !== '') ||
+    noReceipt;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* Month filter */}
-      <select
+      {/* Month filter - calendar picker */}
+      <input
         id="filter-month"
+        type="month"
         value={month || ''}
         onChange={handleMonthChange}
         className="
@@ -104,14 +104,7 @@ export function FilterBar() {
           cursor-pointer
         "
         aria-label="選擇月份篩選"
-      >
-        <option value="">全部月份</option>
-        {monthOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      />
 
       {/* Direction filter buttons */}
       <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
@@ -141,8 +134,28 @@ export function FilterBar() {
         })}
       </div>
 
+      {/* No receipt filter button */}
+      <button
+        type="button"
+        onClick={() => setNoReceipt(!noReceipt)}
+        className={`
+          px-3 py-1.5
+          text-sm
+          border rounded-lg
+          transition-colors duration-200
+          focus:outline-none focus:ring-2 focus:ring-orange-500
+          ${noReceipt
+            ? 'bg-purple-500 text-white border-purple-500 font-semibold'
+            : 'bg-white text-gray-700 border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 hover:border-gray-400'
+          }
+        `}
+        aria-pressed={noReceipt}
+      >
+        未下載
+      </button>
+
       {/* Search input */}
-      <div className="relative flex-1 min-w-[150px]">
+      <div className="relative w-40">
         <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
           <svg
             className="w-4 h-4 text-gray-400 dark:text-gray-500"
@@ -187,19 +200,21 @@ export function FilterBar() {
           type="button"
           onClick={clearFilters}
           className="
-            p-1.5
-            text-gray-500 dark:text-gray-400
-            hover:text-gray-700 dark:hover:text-gray-200
-            hover:bg-gray-100 dark:hover:bg-gray-700
+            px-3 py-1.5
+            text-sm font-medium
+            text-white
+            bg-red-500
+            border border-red-500
             rounded-lg
+            hover:bg-red-600
             transition-colors duration-200
           "
           aria-label="清除所有篩選條件"
-          title="清除篩選"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
+          清除篩選
         </button>
       )}
     </div>

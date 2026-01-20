@@ -20,8 +20,7 @@ import { useTicketStore } from '../stores/ticketStore';
 import { useFilterStore, filterTickets } from '../stores/filterStore';
 import { TicketCard } from './TicketCard';
 import { FilterBar } from './FilterBar';
-import { ExportButton } from './ExportButton';
-import { DownloadReceiptModal } from './DownloadReceiptModal';
+import { getReceiptFilePath, checkReceiptExists } from '../utils/receiptHelper';
 import type { TicketRecord } from '../types/ticket';
 
 /**
@@ -435,8 +434,8 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
   const [ticketToDelete, setTicketToDelete] = useState<TicketRecord | null>(null);
   // State for image viewer modal
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
-  // State for download receipt modal
-  const [ticketToDownload, setTicketToDownload] = useState<TicketRecord | null>(null);
+  // State for tracking which tickets have receipts downloaded
+  const [ticketsWithReceipts, setTicketsWithReceipts] = useState<Set<string>>(new Set());
 
   // Get ticket store state and actions
   const storeTickets = useTicketStore((state) => state.tickets);
@@ -448,6 +447,7 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
   const month = useFilterStore((state) => state.month);
   const direction = useFilterStore((state) => state.direction);
   const searchText = useFilterStore((state) => state.searchText);
+  const noReceipt = useFilterStore((state) => state.noReceipt);
 
   // Use props if provided, otherwise use store
   const tickets = propTickets ?? storeTickets;
@@ -458,9 +458,10 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     return (
       month !== undefined ||
       (direction !== undefined && direction !== 'all') ||
-      (searchText !== undefined && searchText !== '')
+      (searchText !== undefined && searchText !== '') ||
+      noReceipt
     );
-  }, [month, direction, searchText]);
+  }, [month, direction, searchText, noReceipt]);
 
   // Filter tickets based on current filter state
   const filteredTickets = useMemo(() => {
@@ -468,12 +469,19 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     if (propTickets) {
       return tickets;
     }
-    return filterTickets(tickets, {
+    let result = filterTickets(tickets, {
       month,
       direction,
       searchText,
     });
-  }, [tickets, propTickets, month, direction, searchText]);
+
+    // Apply noReceipt filter
+    if (noReceipt) {
+      result = result.filter(ticket => !ticketsWithReceipts.has(ticket.id));
+    }
+
+    return result;
+  }, [tickets, propTickets, month, direction, searchText, noReceipt, ticketsWithReceipts]);
 
   // Sort filtered tickets by travel date (newest first)
   const sortedTickets = useMemo(() => {
@@ -491,6 +499,37 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
       loadTickets();
     }
   }, [propTickets, loadTickets]);
+
+  // Check receipt status for all tickets
+  useEffect(() => {
+    const checkAllReceipts = async () => {
+      const withReceipts = new Set<string>();
+
+      await Promise.all(
+        tickets.map(async (ticket) => {
+          if (ticket.travelDate && ticket.departure && ticket.destination && ticket.ticketNumber) {
+            const path = getReceiptFilePath({
+              travelDate: ticket.travelDate,
+              departure: ticket.departure,
+              destination: ticket.destination,
+              ticketNumber: ticket.ticketNumber,
+              bookingCode: ticket.bookingCode,
+            });
+            const exists = await checkReceiptExists(path);
+            if (exists) {
+              withReceipts.add(ticket.id);
+            }
+          }
+        })
+      );
+
+      setTicketsWithReceipts(withReceipts);
+    };
+
+    if (tickets.length > 0) {
+      checkAllReceipts();
+    }
+  }, [tickets]);
 
   /**
    * Handle delete button click - show confirmation dialog
@@ -538,28 +577,13 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
   }, []);
 
   /**
-   * Handle download receipt button click - show confirmation modal
+   * Handle download receipt button click - directly call onDownloadReceipt
    */
   const handleDownloadReceiptClick = useCallback((ticket: TicketRecord) => {
-    setTicketToDownload(ticket);
-  }, []);
-
-  /**
-   * Handle download receipt confirmation
-   */
-  const handleConfirmDownloadReceipt = useCallback(() => {
-    if (ticketToDownload && onDownloadReceipt) {
-      onDownloadReceipt(ticketToDownload);
+    if (onDownloadReceipt) {
+      onDownloadReceipt(ticket);
     }
-    setTicketToDownload(null);
-  }, [ticketToDownload, onDownloadReceipt]);
-
-  /**
-   * Handle download receipt cancellation
-   */
-  const handleCancelDownloadReceipt = useCallback(() => {
-    setTicketToDownload(null);
-  }, []);
+  }, [onDownloadReceipt]);
 
   // Render loading state
   if (isLoading && tickets.length === 0) {
@@ -571,9 +595,34 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     return <ErrorState error={error} onRetry={handleRetry} />;
   }
 
-  // Render empty state
+  // Render empty state (with FilterBar if filters active)
   if (sortedTickets.length === 0) {
-    return <EmptyState hasFilters={hasFilters} />;
+    return (
+      <div className="w-full">
+        {/* Show FilterBar when filters are active */}
+        {hasFilters && (
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                共{' '}
+                <span className="font-medium text-gray-900 dark:text-gray-100">
+                  0
+                </span>{' '}
+                筆車票
+                <span className="text-gray-500 dark:text-gray-500">
+                  {' '}
+                  / {tickets.length}
+                </span>
+              </p>
+            </div>
+            <div className="flex-1">
+              <FilterBar />
+            </div>
+          </div>
+        )}
+        <EmptyState hasFilters={hasFilters} />
+      </div>
+    );
   }
 
   // Render ticket list
@@ -596,7 +645,6 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
                 </span>
               )}
             </p>
-            <ExportButton />
           </div>
           <div className="flex-1">
             <FilterBar />
@@ -643,14 +691,6 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
         />
       )}
 
-      {/* Download Receipt Modal */}
-      {ticketToDownload && (
-        <DownloadReceiptModal
-          ticket={ticketToDownload}
-          onConfirm={handleConfirmDownloadReceipt}
-          onCancel={handleCancelDownloadReceipt}
-        />
-      )}
     </>
   );
 }

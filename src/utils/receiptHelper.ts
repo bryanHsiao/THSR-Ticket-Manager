@@ -82,3 +82,31 @@ export function getReceiptDisplayInfo(info: ReceiptDownloadInfo): {
     route: `${info.departure} → ${info.destination}`,
   };
 }
+
+/**
+ * Generate the local receipt file path based on ticket info
+ * Path format: /downloads/高鐵憑證/{YYYY-MM}/THSR_{date}_{from}-{to}_{ticketId}.pdf
+ * @param info - Receipt download information
+ * @returns URL path to the local receipt file
+ */
+export function getReceiptFilePath(info: ReceiptDownloadInfo): string {
+  const { travelDate, departure, destination, ticketNumber, bookingCode } = info;
+  const ticketId = bookingCode || formatTicketNumber(ticketNumber);
+  const monthFolder = travelDate.substring(0, 7); // "YYYY-MM"
+  const fileName = `THSR_${travelDate}_${departure}-${destination}_${ticketId}.pdf`;
+  return `/downloads/高鐵憑證/${monthFolder}/${fileName}`;
+}
+
+/**
+ * Check if a local receipt file exists
+ * @param filePath - URL path to check
+ * @returns Promise<boolean> - true if file exists
+ */
+export async function checkReceiptExists(filePath: string): Promise<boolean> {
+  try {
+    const response = await fetch(filePath, { method: 'HEAD' });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
