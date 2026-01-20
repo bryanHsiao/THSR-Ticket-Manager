@@ -57,6 +57,8 @@ interface AppState {
   ocrFallbackUsed: boolean;
   /** Reason for OCR fallback */
   ocrFallbackReason: string | null;
+  /** Error message from form submission (shown inside modal) */
+  submitError: string | null;
 }
 
 /**
@@ -74,6 +76,7 @@ const initialAppState: AppState = {
   lastOcrEngine: null,
   ocrFallbackUsed: false,
   ocrFallbackReason: null,
+  submitError: null,
 };
 
 /**
@@ -217,6 +220,8 @@ function AppContent() {
     const file = appState.imageFile;
     if (!file) return;
 
+    // Clear previous error and start processing
+    setAppState((prev) => ({ ...prev, submitError: null }));
     setProcessing(true);
 
     try {
@@ -244,14 +249,16 @@ function AppContent() {
         isOCRPreviewOpen: false,
         ocrResult: null,
         imageFile: null,
+        submitError: null,
       }));
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '儲存失敗';
       console.error('Save error:', error);
+      // Show error inside modal
       setAppState((prev) => ({
         ...prev,
-        ocrError: errorMessage,
+        submitError: errorMessage,
       }));
     } finally {
       setProcessing(false);
@@ -533,6 +540,25 @@ function AppContent() {
                       />
                     </svg>
                     <span>辨識信心度較低，請確認資訊是否正確</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Error - Show inside modal */}
+              {appState.submitError && (
+                <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-red-800 dark:text-red-200">
+                        儲存失敗
+                      </p>
+                      <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                        {appState.submitError}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
