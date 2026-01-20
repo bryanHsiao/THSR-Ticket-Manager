@@ -1,8 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import path from 'path'
-import fs from 'fs'
 
 // ============================================
 // 應用程式設定（可公開，不含敏感資訊）
@@ -24,22 +22,6 @@ export default defineConfig({
     allowedHosts: ['localhost', '.ngrok-free.app', '.ngrok.io'],
   },
   plugins: [
-    // 自訂 plugin 來服務 downloads 資料夾
-    {
-      name: 'serve-downloads',
-      configureServer(server) {
-        server.middlewares.use('/downloads', (req, res) => {
-          const filePath = path.join(process.cwd(), 'downloads', decodeURIComponent(req.url || ''));
-          if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            res.setHeader('Content-Type', 'application/pdf');
-            fs.createReadStream(filePath).pipe(res);
-          } else {
-            res.statusCode = 404;
-            res.end('Not Found');
-          }
-        });
-      },
-    },
     react(),
     VitePWA({
       registerType: 'autoUpdate',
