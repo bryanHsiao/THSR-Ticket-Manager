@@ -22,6 +22,7 @@ import { TicketList } from './components/TicketList';
 import { TicketUploader } from './components/TicketUploader';
 import { TicketForm, type TicketFormData } from './components/TicketForm';
 import { OCREngineIndicator } from './components/OCREngineIndicator';
+import { ApiKeySettings } from './components/ApiKeySettings';
 import { ocrManager } from './services/ocrManager';
 import { googleAuthService } from './services/googleAuthService';
 import { llmConfigService } from './services/llmConfigService';
@@ -92,6 +93,8 @@ function generateUUID(): string {
 function AppContent() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [appState, setAppState] = useState<AppState>(initialAppState);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false);
 
   // Ticket store actions
   const loadTickets = useTicketStore((state) => state.loadTickets);
@@ -116,9 +119,10 @@ function AppContent() {
   // Initialize app on mount
   useEffect(() => {
     const initializeApp = async () => {
-      // Initialize LLM config from DRAPI (for OCR functionality)
+      // Initialize LLM config from localStorage
       try {
         await llmConfigService.initialize();
+        setIsApiKeyConfigured(llmConfigService.isConfigured());
         console.log('LLM config initialized');
       } catch (error) {
         console.warn('Failed to initialize LLM config:', error);
@@ -149,6 +153,13 @@ function AppContent() {
 
     initializeApp();
   }, [loadTickets, syncTickets]);
+
+  /**
+   * Handle settings save
+   */
+  const handleSettingsSave = useCallback(() => {
+    setIsApiKeyConfigured(llmConfigService.isConfigured());
+  }, []);
 
   /**
    * Handle image capture from TicketUploader
@@ -363,6 +374,8 @@ function AppContent() {
         syncStatus={syncStatus}
         lastSyncTime={lastSyncTime}
         isSyncing={false}
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        isApiKeyConfigured={isApiKeyConfigured}
       />
 
       {/* Upload Area - At top for easy access */}
@@ -507,8 +520,8 @@ function AppContent() {
                 </div>
               )}
 
-              {/* OCR Confidence Indicator */}
-              {appState.ocrResult.confidence < 0.7 && (
+              {/* OCR Confidence Indicator - only show for actual OCR, not manual mode */}
+              {appState.ocrResult.confidence < 0.7 && appState.ocrResult.engineUsed !== 'manual' && (
                 <div className="mx-6 mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                   <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300 text-sm">
                     <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -545,6 +558,13 @@ function AppContent() {
           </div>
         </div>
       )}
+
+      {/* API Key Settings Modal */}
+      <ApiKeySettings
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onSave={handleSettingsSave}
+      />
     </div>
   );
 }

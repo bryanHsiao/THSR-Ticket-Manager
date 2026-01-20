@@ -10,21 +10,13 @@ import fs from 'fs'
 const APP_CONFIG = {
   // Google OAuth Client ID（公開資訊）
   GOOGLE_CLIENT_ID: '576507381215-hnfsve4itb9euqlh6r1rt64kt3lp504r.apps.googleusercontent.com',
-
-  // DRAPI 端點（用於從 Domino server 取得 LLM API key）
-  DRAPI_URL: '',  // 部署時填入，例如：'https://your-domino-server.com/api/config'
-
-  // Zeabur API Base URL（如果使用 Zeabur 代理）
-  ZEABUR_API_BASE: '',  // 例如：'https://your-zeabur-proxy.com/v1'
 }
 
 // https://vite.dev/config/
 export default defineConfig({
-  // 注入環境變數（這些會覆蓋 .env 的設定）
+  // 注入環境變數
   define: {
     'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(APP_CONFIG.GOOGLE_CLIENT_ID),
-    'import.meta.env.VITE_DRAPI_URL': JSON.stringify(APP_CONFIG.DRAPI_URL),
-    'import.meta.env.VITE_ZEABUR_API_BASE': JSON.stringify(APP_CONFIG.ZEABUR_API_BASE),
   },
   server: {
     allowedHosts: ['localhost', '.ngrok-free.app', '.ngrok.io'],

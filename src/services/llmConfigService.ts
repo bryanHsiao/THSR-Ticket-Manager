@@ -1,24 +1,19 @@
 /**
  * LLM Configuration Service
- * Fetches API keys from DRAPI endpoint on Domino server
+ * Manages API keys stored in localStorage
  *
- * Flow:
- * 1. On app startup, try to fetch config from DRAPI
- * 2. If successful, store config in memory
- * 3. If failed (network error, timeout), fall back to manual input mode
+ * Security:
+ * - API keys are stored only in the user's browser (localStorage)
+ * - Keys are never sent to any server except the LLM API itself
+ * - Users have full control over their keys
  */
 
-import type { LLMProvider, LLMConfig, DRAPIResponse } from '../types/llm';
-
-/**
- * DRAPI endpoint URL from environment variable
- */
-const DRAPI_URL = import.meta.env.VITE_DRAPI_URL || '';
+import type { LLMProvider, LLMConfig } from '../types/llm';
 
 /**
- * Timeout for DRAPI requests (10 seconds)
+ * localStorage key for storing API key
  */
-const DRAPI_TIMEOUT_MS = 10000;
+const STORAGE_KEY = 'thsr_llm_api_key';
 
 /**
  * Base URLs for different providers
@@ -34,126 +29,70 @@ const PROVIDER_BASE_URLS: Record<LLMProvider, string> = {
 class LLMConfigService {
   private config: LLMConfig | null = null;
   private initialized = false;
-  private initPromise: Promise<void> | null = null;
 
   /**
-   * Initialize the service by fetching config from DRAPI
-   * Safe to call multiple times - will only fetch once
+   * Initialize the service by loading config from localStorage
    */
   async initialize(): Promise<void> {
-    // Return existing promise if initialization is in progress
-    if (this.initPromise) {
-      return this.initPromise;
-    }
-
-    // Skip if already initialized
     if (this.initialized) {
       return;
     }
 
-    this.initPromise = this.fetchConfig();
-
-    try {
-      await this.initPromise;
-    } finally {
-      this.initPromise = null;
-    }
+    this.loadFromStorage();
+    this.initialized = true;
   }
 
   /**
-   * Fetch configuration from DRAPI
+   * Load API key from localStorage
    */
-  private async fetchConfig(): Promise<void> {
-    // Check if DRAPI URL is configured
-    if (!DRAPI_URL) {
-      console.log('LLMConfigService: DRAPI URL not configured, using environment variables');
-      this.tryLoadFromEnv();
-      this.initialized = true;
-      return;
-    }
-
-    // Create AbortController for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DRAPI_TIMEOUT_MS);
-
+  private loadFromStorage(): void {
     try {
-      console.log('LLMConfigService: Fetching config from DRAPI...');
-
-      const response = await fetch(DRAPI_URL, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`DRAPI returned ${response.status}: ${response.statusText}`);
-      }
-
-      const data: DRAPIResponse = await response.json();
-      console.log('LLMConfigService: DRAPI response received');
-
-      // Parse response and determine provider
-      this.config = this.parseResponse(data);
-
-      if (this.config) {
-        console.log(`LLMConfigService: Configured with provider: ${this.config.provider}`);
+      const storedKey = localStorage.getItem(STORAGE_KEY);
+      if (storedKey && storedKey.length > 0) {
+        this.config = {
+          provider: 'openai',
+          apiKey: storedKey,
+          baseUrl: PROVIDER_BASE_URLS.openai,
+        };
+        console.log('LLMConfigService: Loaded API key from localStorage');
       } else {
-        console.log('LLMConfigService: No valid config in DRAPI response');
+        this.config = null;
+        console.log('LLMConfigService: No API key found in localStorage');
       }
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.warn('LLMConfigService: DRAPI request timeout');
-      } else {
-        console.warn('LLMConfigService: Failed to fetch from DRAPI:', error);
-      }
-
-      // Try to load from environment variables as fallback
-      this.tryLoadFromEnv();
-    } finally {
-      clearTimeout(timeoutId);
-      this.initialized = true;
+      console.warn('LLMConfigService: Failed to load from localStorage:', error);
+      this.config = null;
     }
   }
 
   /**
-   * Parse DRAPI response into LLMConfig
+   * Save API key to localStorage
    */
-  private parseResponse(data: DRAPIResponse): LLMConfig | null {
-    // Check for OpenAI key
-    if (data.openai && data.openai.length > 0) {
-      return {
-        provider: 'openai',
-        apiKey: data.openai,
-        baseUrl: PROVIDER_BASE_URLS.openai,
-      };
-    }
-
-    // Check for Zeabur key
-    if (data.zeabur && data.zeabur.length > 0) {
-      return {
-        provider: 'zeabur',
-        apiKey: data.zeabur,
-        baseUrl: PROVIDER_BASE_URLS.zeabur,
-      };
-    }
-
-    return null;
-  }
-
-  /**
-   * Try to load config from environment variables
-   */
-  private tryLoadFromEnv(): void {
-    const envKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (envKey && envKey.length > 0) {
+  setApiKey(apiKey: string, provider: LLMProvider = 'openai'): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, apiKey);
       this.config = {
-        provider: 'openai',
-        apiKey: envKey,
-        baseUrl: PROVIDER_BASE_URLS.openai,
+        provider,
+        apiKey,
+        baseUrl: PROVIDER_BASE_URLS[provider],
       };
-      console.log('LLMConfigService: Loaded config from environment variables');
+      console.log('LLMConfigService: API key saved to localStorage');
+    } catch (error) {
+      console.error('LLMConfigService: Failed to save to localStorage:', error);
+      throw new Error('無法儲存 API Key');
+    }
+  }
+
+  /**
+   * Clear API key from localStorage
+   */
+  clearApiKey(): void {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      this.config = null;
+      console.log('LLMConfigService: API key cleared from localStorage');
+    } catch (error) {
+      console.warn('LLMConfigService: Failed to clear localStorage:', error);
     }
   }
 
@@ -197,6 +136,15 @@ class LLMConfigService {
    */
   isInitialized(): boolean {
     return this.initialized;
+  }
+
+  /**
+   * Get masked API key for display (shows first 7 and last 4 characters)
+   */
+  getMaskedApiKey(): string {
+    const key = this.config?.apiKey;
+    if (!key || key.length < 15) return '';
+    return `${key.substring(0, 7)}...${key.substring(key.length - 4)}`;
   }
 }
 

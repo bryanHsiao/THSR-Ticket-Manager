@@ -84,7 +84,7 @@ export function FilterBar() {
     noReceipt;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2">
       {/* Month filter - calendar picker */}
       <input
         id="filter-month"
@@ -92,6 +92,7 @@ export function FilterBar() {
         value={month || ''}
         onChange={handleMonthChange}
         className="
+          flex-shrink-0
           px-2 py-1.5
           text-sm
           text-gray-700 dark:text-gray-200
@@ -107,7 +108,7 @@ export function FilterBar() {
       />
 
       {/* Direction filter buttons */}
-      <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+      <div className="flex-shrink-0 inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
         {DIRECTION_BUTTONS.map((btn, index) => {
           const isSelected = direction === btn.value;
           return (
@@ -139,6 +140,7 @@ export function FilterBar() {
         type="button"
         onClick={() => setNoReceipt(!noReceipt)}
         className={`
+          flex-shrink-0
           px-3 py-1.5
           text-sm
           border rounded-lg
@@ -154,8 +156,8 @@ export function FilterBar() {
         未下載
       </button>
 
-      {/* Search input */}
-      <div className="relative w-40">
+      {/* Search input - flex-1 to fill remaining space */}
+      <div className="relative flex-1 min-w-0">
         <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
           <svg
             className="w-4 h-4 text-gray-400 dark:text-gray-500"
@@ -200,6 +202,7 @@ export function FilterBar() {
           type="button"
           onClick={clearFilters}
           className="
+            flex-shrink-0
             px-3 py-1.5
             text-sm font-medium
             text-white
@@ -208,6 +211,7 @@ export function FilterBar() {
             rounded-lg
             hover:bg-red-600
             transition-colors duration-200
+            whitespace-nowrap
           "
           aria-label="清除所有篩選條件"
         >

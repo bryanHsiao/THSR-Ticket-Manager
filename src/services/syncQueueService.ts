@@ -369,6 +369,15 @@ class SyncQueueService {
   }
 
   /**
+   * Strip imageUrl from ticket to avoid localStorage quota issues
+   * Images are stored in IndexedDB only, not in localStorage
+   */
+  private stripImageForLocalStorage(ticket: TicketRecord): TicketRecord {
+    const { imageUrl, ...rest } = ticket;
+    return { ...rest, imageUrl: '' };
+  }
+
+  /**
    * Update local tickets storage for offline access
    *
    * @param ticket - The ticket to update
@@ -381,14 +390,16 @@ class SyncQueueService {
 
     const tickets = this.getLocalTickets();
     const existingIndex = tickets.findIndex(t => t.id === ticket.id);
+    // Strip imageUrl to avoid localStorage quota exceeded errors
+    const ticketWithoutImage = this.stripImageForLocalStorage(ticket);
 
     switch (operation) {
       case 'create':
       case 'update':
         if (existingIndex !== -1) {
-          tickets[existingIndex] = { ...ticket, syncStatus: 'pending' };
+          tickets[existingIndex] = { ...ticketWithoutImage, syncStatus: 'pending' };
         } else {
-          tickets.push({ ...ticket, syncStatus: 'pending' });
+          tickets.push({ ...ticketWithoutImage, syncStatus: 'pending' });
         }
         break;
 
@@ -427,6 +438,7 @@ class SyncQueueService {
 
   /**
    * Save tickets to local storage (for bulk operations)
+   * Note: imageUrl is stripped to avoid localStorage quota exceeded errors
    *
    * @param tickets - Array of tickets to save locally
    */
@@ -435,7 +447,9 @@ class SyncQueueService {
       return;
     }
 
-    localStorage.setItem(LOCAL_TICKETS_STORAGE_KEY, JSON.stringify(tickets));
+    // Strip imageUrl from all tickets to avoid localStorage quota issues
+    const ticketsWithoutImages = tickets.map(t => this.stripImageForLocalStorage(t));
+    localStorage.setItem(LOCAL_TICKETS_STORAGE_KEY, JSON.stringify(ticketsWithoutImages));
   }
 
   /**
