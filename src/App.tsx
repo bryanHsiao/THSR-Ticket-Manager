@@ -551,6 +551,7 @@ function AppContent() {
                   isEditMode={false}
                   onSubmit={handleOCRConfirm}
                   onCancel={handleOCRCancel}
+                  isSubmitting={isProcessing}
                 />
               </div>
               </div>
