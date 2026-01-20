@@ -165,19 +165,22 @@ export const useTicketStore = create<TicketStore>((set) => ({
 
       // Auto-sync in background if logged in (fire and forget)
       // Sync errors won't block the UI, they'll show as a toast
+      // Use setTimeout to ensure this runs completely async and can't block
       if (googleAuthService.isAuthorized()) {
-        storageService.syncToCloud()
-          .then(async () => {
-            // Reload tickets to get updated sync status
-            const tickets = await storageService.getAllTickets();
-            set({ tickets, syncError: null });
-          })
-          .catch((syncError) => {
-            const syncErrorMessage = syncError instanceof Error ? syncError.message : '同步失敗';
-            console.warn('Auto-sync after add failed:', syncError);
-            // Set syncError for toast display, but don't block UI
-            set({ syncError: `同步失敗：${syncErrorMessage}` });
-          });
+        setTimeout(() => {
+          storageService.syncToCloud()
+            .then(async () => {
+              // Reload tickets to get updated sync status
+              const tickets = await storageService.getAllTickets();
+              set({ tickets, syncError: null });
+            })
+            .catch((syncError) => {
+              const syncErrorMessage = syncError instanceof Error ? syncError.message : '同步失敗';
+              console.warn('Auto-sync after add failed:', syncError);
+              // Set syncError for toast display, but don't block UI
+              set({ syncError: `同步失敗：${syncErrorMessage}` });
+            });
+        }, 0);
       }
       // Don't throw - local save was successful
     } catch (error) {
