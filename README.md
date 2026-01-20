@@ -2,12 +2,15 @@
 
 台灣高鐵車票管理應用程式 - 使用 React + Vite + TypeScript 建構
 
+**線上版本**：https://bryanHsiao.github.io/THSR-Ticket-Manager/
+
 ## 功能特色
 
-- 車票拍照 OCR 辨識
+- 車票拍照 OCR 辨識（使用 OpenAI GPT-4o）
 - Google Drive 雲端同步
 - 離線使用支援
 - PWA 行動裝置體驗
+- 憑證下載功能
 
 ## 快速開始
 
@@ -15,20 +18,6 @@
 
 ```bash
 npm install
-```
-
-### 環境變數設定
-
-複製 `.env.example` 為 `.env` 並填入 Google OAuth Client ID：
-
-```bash
-cp .env.example .env
-```
-
-編輯 `.env` 檔案，設定您的 Google Client ID：
-
-```
-VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 ```
 
 ### 啟動開發伺服器
@@ -42,6 +31,21 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## OCR 辨識設定
+
+本應用程式使用 OpenAI GPT-4o 進行車票 OCR 辨識。
+
+### 設定 API Key
+
+1. 開啟應用程式
+2. 點選右上角的齒輪圖示（設定按鈕）
+3. 輸入您的 OpenAI API Key
+4. 點選「儲存」
+
+API Key 僅儲存在您的瀏覽器中（localStorage），不會傳送至任何伺服器。
+
+若未設定 API Key 或網路不通，系統會自動切換為手動輸入模式。
 
 ## Google Cloud Console 設定指南
 
@@ -99,23 +103,13 @@ npm run build
 5. 輸入名稱（例如：THSR Ticket Manager Web Client）
 6. 在「已授權的 JavaScript 來源」區塊，新增：
    - 開發環境：`http://localhost:5173`
-   - 正式環境：您的網站網址（例如：`https://your-domain.com`）
+   - 正式環境：`https://your-username.github.io`
 7. 點選「建立」
-8. 複製顯示的「用戶端 ID」
-
-### 步驟 7：設定環境變數
-
-將步驟 6 取得的用戶端 ID 填入 `.env` 檔案：
-
-```
-VITE_GOOGLE_CLIENT_ID=123456789-abcdefg.apps.googleusercontent.com
-```
 
 ### 注意事項
 
 - **測試模式限制**：在 OAuth 同意畫面未通過 Google 審核之前，僅有新增的測試使用者可以登入
 - **正式發布**：若要開放給所有使用者，需要提交 OAuth 同意畫面審核申請
-- **安全性**：請勿將 `.env` 檔案提交至版本控制系統
 
 ## 技術架構
 
@@ -126,7 +120,8 @@ VITE_GOOGLE_CLIENT_ID=123456789-abcdefg.apps.googleusercontent.com
 - **狀態管理**：Zustand
 - **本機儲存**：IndexedDB (Dexie)
 - **OAuth 套件**：@react-oauth/google
-- **OCR 引擎**：Tesseract.js
+- **OCR 引擎**：OpenAI GPT-4o（手動輸入備援）
+- **部署平台**：GitHub Pages
 
 ## 授權
 
