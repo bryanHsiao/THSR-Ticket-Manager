@@ -33,14 +33,6 @@ const THSR_STATIONS = [
 ] as const;
 
 /**
- * Direction options for dropdown
- */
-const DIRECTION_OPTIONS: { value: TravelDirection; label: string }[] = [
-  { value: 'northbound', label: '北上' },
-  { value: 'southbound', label: '南下' },
-];
-
-/**
  * Form field values
  */
 export interface TicketFormData {
