@@ -76,8 +76,8 @@ export function GoogleAuthButton() {
 
     setIsLoading(true);
     try {
-      // Clear cloud data
-      const deletedCount = await googleDriveService.clearCloudData();
+      // Clear cloud data (deletes entire app folder)
+      await googleDriveService.clearCloudData();
 
       // Clear local data (IndexedDB and localStorage)
       await storageService.clearAllData();
@@ -85,7 +85,7 @@ export function GoogleAuthButton() {
       // Reload tickets to update UI (will be empty)
       await loadTickets();
 
-      alert(`已清除所有資料${deletedCount > 0 ? `（雲端 ${deletedCount} 個檔案）` : ''}`);
+      alert('已清除所有資料');
     } catch (error) {
       console.error('Clear all data failed:', error);
       alert('清除資料失敗，請稍後再試');

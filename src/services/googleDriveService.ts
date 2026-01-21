@@ -522,69 +522,36 @@ class GoogleDriveService {
 
   /**
    * Clear all ticket data from Google Drive
-   * Deletes ALL tickets.json files and images folder from the app folder
+   * Deletes the entire app folder (THSR-Ticket-Manager folder and all contents)
+   * A new folder will be created automatically when needed
    *
-   * @returns Promise<number> - Number of files deleted
+   * @returns Promise<number> - 1 if folder was deleted, 0 otherwise
    */
   async clearCloudData(): Promise<number> {
-    let totalDeleted = 0;
-
-    // Find ALL tickets.json files (there might be duplicates)
-    const fileIds = await this.findAllFiles(TICKETS_FILE_NAME);
-
-    console.log(`[clearCloudData] Found ${fileIds.length} ticket files to delete`);
-
-    // Delete all ticket files
-    for (const fileId of fileIds) {
-      console.log(`[clearCloudData] Deleting ticket file: ${fileId}`);
-      await this.deleteFile(fileId);
-      totalDeleted++;
-    }
-
-    // Delete the images folder (which will delete all images inside)
     try {
-      const folderId = await this.ensureFolder();
-      const imagesFolderId = await this.findSubfolder(folderId, 'images');
-      if (imagesFolderId) {
-        console.log(`[clearCloudData] Deleting images folder: ${imagesFolderId}`);
-        await this.deleteFile(imagesFolderId);
-        totalDeleted++;
+      // Get the cached folder ID or find it
+      const folderId = this.folderId || await this.findFolder();
+
+      if (!folderId) {
+        console.log('[clearCloudData] No folder found to delete');
+        return 0;
       }
+
+      console.log(`[clearCloudData] Deleting entire folder: ${folderId}`);
+      await this.deleteFile(folderId);
+
+      // Clear folder cache
+      this.folderId = null;
+
+      console.log('[clearCloudData] Folder deleted successfully');
+      return 1;
+
     } catch (error) {
-      console.warn('[clearCloudData] Failed to delete images folder:', error);
+      console.warn('[clearCloudData] Error during cleanup:', error);
+      // Clear cache anyway in case of partial deletion
+      this.folderId = null;
+      return 0;
     }
-
-    console.log(`[clearCloudData] Deleted ${totalDeleted} items total`);
-    return totalDeleted;
-  }
-
-  /**
-   * Find a subfolder by name within a parent folder
-   *
-   * @param parentFolderId - The parent folder ID
-   * @param folderName - The name of the subfolder to find
-   * @returns Promise<string | null> - The subfolder ID if found, null otherwise
-   */
-  private async findSubfolder(parentFolderId: string, folderName: string): Promise<string | null> {
-    const query = `name = '${this.escapeQueryString(folderName)}' and mimeType = '${FOLDER_MIME_TYPE}' and '${parentFolderId}' in parents and trashed = false`;
-
-    const searchParams = new URLSearchParams({
-      q: query,
-      fields: 'files(id)',
-      spaces: 'drive',
-    });
-
-    const response = await fetch(`${GOOGLE_DRIVE_API_BASE}/files?${searchParams.toString()}`, {
-      method: 'GET',
-      headers: this.getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data: DriveFilesListResponse = await response.json();
-    return data.files && data.files.length > 0 ? data.files[0].id : null;
   }
 
   /**
