@@ -66,6 +66,9 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // 強制新 Service Worker 立即接管
+        skipWaiting: true,
+        clientsClaim: true,
         // Cache strategies for offline support
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
