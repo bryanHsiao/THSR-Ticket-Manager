@@ -21,6 +21,16 @@ body {
   min-height: 100vh;
 }
 
+/* Prevent pinch zoom on iOS (works in PWA mode) */
+html {
+  touch-action: pan-x pan-y;
+}
+
+/* Prevent double-tap zoom */
+* {
+  touch-action: manipulation;
+}
+
 #root {
   min-height: 100vh;
 }
