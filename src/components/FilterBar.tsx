@@ -85,27 +85,35 @@ export function FilterBar() {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Month filter - calendar picker */}
-      <input
-        id="filter-month"
-        type="month"
-        value={month || ''}
-        onChange={handleMonthChange}
-        className="
-          flex-shrink-0
-          px-2 py-1.5
-          text-sm
-          text-gray-700 dark:text-gray-200
-          bg-white dark:bg-gray-700
-          border border-gray-300 dark:border-gray-600
-          rounded-lg
-          hover:border-gray-400 dark:hover:border-gray-500
-          focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
-          transition-colors duration-200
-          cursor-pointer
-        "
-        aria-label="選擇月份篩選"
-      />
+      {/* Month filter - calendar picker with placeholder */}
+      <div className="relative flex-shrink-0">
+        <input
+          id="filter-month"
+          type="month"
+          value={month || ''}
+          onChange={handleMonthChange}
+          className={`
+            w-28
+            px-2 py-1.5
+            text-sm
+            bg-white dark:bg-gray-700
+            border border-gray-300 dark:border-gray-600
+            rounded-lg
+            hover:border-gray-400 dark:hover:border-gray-500
+            focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent
+            transition-colors duration-200
+            cursor-pointer
+            ${month ? 'text-gray-700 dark:text-gray-200' : 'text-transparent'}
+          `}
+          aria-label="選擇月份篩選"
+        />
+        {/* Placeholder text when no month selected */}
+        {!month && (
+          <span className="absolute inset-0 flex items-center px-2 text-sm text-gray-400 dark:text-gray-500 pointer-events-none">
+            📅 月份
+          </span>
+        )}
+      </div>
 
       {/* Direction filter buttons */}
       <div className="flex-shrink-0 inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
