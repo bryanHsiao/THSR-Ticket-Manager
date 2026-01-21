@@ -112,8 +112,8 @@ function ImageViewerModal({ imageUrl, onClose }: ImageViewerModalProps) {
         className="
           max-w-full max-h-full
           overflow-auto
+          allow-pinch-zoom
         "
-        style={{ touchAction: 'pinch-zoom pan-x pan-y' }}
         onClick={(e) => e.stopPropagation()}
       >
         <img
@@ -125,7 +125,6 @@ function ImageViewerModal({ imageUrl, onClose }: ImageViewerModalProps) {
             rounded-lg
             shadow-2xl
           "
-          style={{ touchAction: 'pinch-zoom' }}
         />
       </div>
     </div>
