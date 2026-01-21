@@ -107,12 +107,11 @@ function ImageViewerModal({ imageUrl, onClose }: ImageViewerModalProps) {
         </svg>
       </button>
 
-      {/* Image container - allows pinch-to-zoom */}
+      {/* Image container */}
       <div
         className="
           max-w-full max-h-full
           overflow-auto
-          allow-pinch-zoom
         "
         onClick={(e) => e.stopPropagation()}
       >
