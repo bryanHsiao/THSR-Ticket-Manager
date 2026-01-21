@@ -74,6 +74,7 @@ interface DriveFilesListResponse {
 class GoogleDriveService {
   private folderId: string | null = null;
   private uploadLock: Promise<void> | null = null;
+  private folderLock: Promise<string> | null = null;
 
   /**
    * Get authorization headers for API requests
@@ -97,6 +98,7 @@ class GoogleDriveService {
   /**
    * Ensure the THSR-Ticket-Manager folder exists in Google Drive
    * Creates the folder if it doesn't exist, or returns the existing folder ID
+   * Uses a lock to prevent duplicate folder creation from concurrent calls
    *
    * @returns Promise<string> - The folder ID
    * @throws Error if folder creation fails or user is not authorized
@@ -107,6 +109,26 @@ class GoogleDriveService {
       return this.folderId;
     }
 
+    // If another call is already creating the folder, wait for it
+    if (this.folderLock) {
+      return this.folderLock;
+    }
+
+    // Create a lock for this folder creation
+    this.folderLock = this.ensureFolderInternal();
+
+    try {
+      const folderId = await this.folderLock;
+      return folderId;
+    } finally {
+      this.folderLock = null;
+    }
+  }
+
+  /**
+   * Internal method to actually find or create the folder
+   */
+  private async ensureFolderInternal(): Promise<string> {
     // Search for existing folder
     const existingFolderId = await this.findFolder();
 
