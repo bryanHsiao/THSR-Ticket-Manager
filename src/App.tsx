@@ -27,7 +27,7 @@ import { ocrManager } from './services/ocrManager';
 import { googleAuthService } from './services/googleAuthService';
 import { llmConfigService } from './services/llmConfigService';
 import type { OCREngineType, OCRResultWithMeta } from './types/ocr';
-import { blobToBase64 } from './utils/imageUtils';
+import { blobToBase64, compressImage } from './utils/imageUtils';
 import type { TicketRecord } from './types/ticket';
 import type { SyncStatus } from './types/user';
 
@@ -242,8 +242,12 @@ function AppContent() {
     setProcessing(true);
 
     try {
-      // Convert image to Base64 for local storage
-      const imageUrl = await blobToBase64(file);
+      // Compress image before storing to avoid IndexedDB quota issues on mobile
+      // Max width 800px is enough for viewing, reduces storage significantly
+      const compressedFile = await compressImage(file, 800);
+
+      // Convert compressed image to Base64 for local storage
+      const imageUrl = await blobToBase64(compressedFile);
 
       // Create ticket record
       const isLoggedIn = googleAuthService.isAuthorized();
