@@ -190,7 +190,11 @@ function AppContent() {
       // Sync from cloud in background (don't block UI)
       if (googleAuthService.isAuthorized()) {
         syncTickets()
-          .then(() => console.log('Cloud sync completed'))
+          .then(() => {
+            console.log('Cloud sync completed');
+            // After sync, migrate existing images to Drive (background)
+            migrateImagesToCloud();
+          })
           .catch((error) => {
             console.warn('Cloud sync failed, using local data:', error);
             // If auth error, clear credentials and logout
@@ -204,6 +208,60 @@ function AppContent() {
 
     initializeApp();
   }, [loadTickets, syncTickets, logout]);
+
+  /**
+   * Migrate existing ticket images to Google Drive
+   * Runs in background after cloud sync completes
+   * Only migrates tickets that have local Base64 imageUrl but no driveImageId
+   */
+  const migrateImagesToCloud = useCallback(async () => {
+    // Get current tickets from store
+    const currentTickets = useTicketStore.getState().tickets;
+
+    // Find tickets that need migration (have imageUrl but no driveImageId)
+    const ticketsToMigrate = currentTickets.filter(
+      (t) => t.imageUrl && t.imageUrl.startsWith('data:') && !t.driveImageId
+    );
+
+    if (ticketsToMigrate.length === 0) {
+      console.log('[Migration] No images to migrate');
+      return;
+    }
+
+    console.log(`[Migration] Found ${ticketsToMigrate.length} images to migrate`);
+
+    // Migrate each ticket's image in sequence (to avoid overwhelming the API)
+    for (const ticket of ticketsToMigrate) {
+      try {
+        // Convert Base64 to Blob
+        const response = await fetch(ticket.imageUrl!);
+        const blob = await response.blob();
+
+        // Upload to Drive
+        const fileName = `ticket-${ticket.id}.jpg`;
+        const driveImageId = await googleDriveService.uploadImage(
+          blob,
+          fileName,
+          ticket.travelDate
+        );
+
+        // Update ticket with driveImageId
+        const updatedTicket: TicketRecord = {
+          ...ticket,
+          driveImageId,
+          updatedAt: new Date().toISOString(),
+        };
+        await updateTicket(updatedTicket);
+
+        console.log(`[Migration] Migrated image for ticket ${ticket.ticketNumber}`);
+      } catch (error) {
+        console.warn(`[Migration] Failed to migrate image for ticket ${ticket.ticketNumber}:`, error);
+        // Continue with next ticket even if one fails
+      }
+    }
+
+    console.log('[Migration] Image migration completed');
+  }, [updateTicket]);
 
   /**
    * Handle settings save
