@@ -143,11 +143,12 @@ export function FilterBar() {
         })}
       </div>
 
-      {/* No receipt filter button */}
+      {/* No receipt filter button - hidden on mobile */}
       <button
         type="button"
         onClick={() => setNoReceipt(!noReceipt)}
         className={`
+          hidden sm:block
           flex-shrink-0
           px-3 py-1.5
           text-sm
