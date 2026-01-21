@@ -154,17 +154,15 @@ function AppContent() {
         console.error('Failed to load tickets:', error);
       }
 
-      // If logged in, sync from cloud to get latest data
-      if (googleAuthService.isAuthorized()) {
-        try {
-          await syncTickets();
-          console.log('Cloud sync completed');
-        } catch (error) {
-          console.warn('Cloud sync failed, using local data:', error);
-        }
-      }
-
+      // Show UI immediately after local data loads
       setIsInitialized(true);
+
+      // Sync from cloud in background (don't block UI)
+      if (googleAuthService.isAuthorized()) {
+        syncTickets()
+          .then(() => console.log('Cloud sync completed'))
+          .catch((error) => console.warn('Cloud sync failed, using local data:', error));
+      }
     };
 
     initializeApp();
