@@ -219,7 +219,7 @@ export function Header({
                 高鐵車票管理
               </h1>
               {/* Version indicator */}
-              <p className="text-[10px] text-orange-200/70 hidden sm:block">
+              <p className="text-[10px] text-orange-200/70">
                 v{import.meta.env.VITE_APP_VERSION || '0.0.0'}
               </p>
             </div>
