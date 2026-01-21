@@ -252,8 +252,8 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
 
         {/* Header Row 2: Action Buttons - Touch friendly with larger targets */}
         <div className="flex items-center justify-end gap-3 mb-3 border-b border-gray-100 dark:border-gray-700 pb-3">
-          {/* View Image Button - Only show if image exists */}
-          {ticket.imageUrl && (
+          {/* View Image Button - Show if local image or Drive image exists */}
+          {(ticket.imageUrl || ticket.driveImageId) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
