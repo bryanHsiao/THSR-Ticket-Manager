@@ -21,6 +21,8 @@ import { useFilterStore, filterTickets } from '../stores/filterStore';
 import { TicketCard } from './TicketCard';
 import { FilterBar } from './FilterBar';
 import { getReceiptFilePath, checkReceiptExists } from '../utils/receiptHelper';
+import { googleDriveService } from '../services/googleDriveService';
+import { googleAuthService } from '../services/googleAuthService';
 import type { TicketRecord } from '../types/ticket';
 
 /**
@@ -54,16 +56,18 @@ interface DeleteConfirmDialogProps {
 /**
  * Image Viewer Modal Component
  *
- * Displays ticket image in a fullscreen modal
+ * Displays ticket image in a fullscreen modal with loading state support
  */
 interface ImageViewerModalProps {
   /** Image URL to display */
-  imageUrl: string;
+  imageUrl: string | null;
+  /** Whether image is loading */
+  isLoading?: boolean;
   /** Callback when modal is closed */
   onClose: () => void;
 }
 
-function ImageViewerModal({ imageUrl, onClose }: ImageViewerModalProps) {
+function ImageViewerModal({ imageUrl, isLoading, onClose }: ImageViewerModalProps) {
   // Handle escape key to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -112,19 +116,47 @@ function ImageViewerModal({ imageUrl, onClose }: ImageViewerModalProps) {
         className="
           max-w-full max-h-full
           overflow-auto
+          flex items-center justify-center
         "
         onClick={(e) => e.stopPropagation()}
       >
-        <img
-          src={imageUrl}
-          alt="車票圖片"
-          className="
-            max-w-[90vw] max-h-[90vh]
-            object-contain
-            rounded-lg
-            shadow-2xl
-          "
-        />
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-4">
+            <svg
+              className="w-12 h-12 text-white animate-spin"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
+            </svg>
+            <p className="text-white text-sm">正在從雲端載入圖片...</p>
+          </div>
+        ) : imageUrl ? (
+          <img
+            src={imageUrl}
+            alt="車票圖片"
+            className="
+              max-w-[90vw] max-h-[90vh]
+              object-contain
+              rounded-lg
+              shadow-2xl
+            "
+          />
+        ) : (
+          <p className="text-white text-sm">無法載入圖片</p>
+        )}
       </div>
     </div>
   );
@@ -434,6 +466,8 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
   const [ticketToDelete, setTicketToDelete] = useState<TicketRecord | null>(null);
   // State for image viewer modal
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
+  // State for image loading from Drive
+  const [isLoadingImage, setIsLoadingImage] = useState(false);
   // State for tracking which tickets have receipts downloaded
   const [ticketsWithReceipts, setTicketsWithReceipts] = useState<Set<string>>(new Set());
 
@@ -564,9 +598,38 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
 
   /**
    * Handle view image button click - open image viewer modal
+   * Supports fallback to Google Drive if local image is missing
    */
-  const handleViewImage = useCallback((imageUrl: string) => {
-    setViewingImageUrl(imageUrl);
+  const handleViewImage = useCallback(async (ticket: TicketRecord) => {
+    // If local image exists, show it directly
+    if (ticket.imageUrl && ticket.imageUrl.startsWith('data:')) {
+      setViewingImageUrl(ticket.imageUrl);
+      return;
+    }
+
+    // If no Drive ID, nothing to show
+    if (!ticket.driveImageId) {
+      return;
+    }
+
+    // If not logged in, can't load from Drive
+    if (!googleAuthService.isAuthorized()) {
+      return;
+    }
+
+    // Load from Google Drive
+    setIsLoadingImage(true);
+    setViewingImageUrl(null); // Show modal with loading state
+
+    try {
+      const base64Url = await googleDriveService.downloadImage(ticket.driveImageId);
+      setViewingImageUrl(base64Url);
+    } catch (error) {
+      console.warn('[TicketList] Failed to load image from Drive:', error);
+      setViewingImageUrl(null);
+    } finally {
+      setIsLoadingImage(false);
+    }
   }, []);
 
   /**
@@ -574,6 +637,7 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
    */
   const handleCloseImageViewer = useCallback(() => {
     setViewingImageUrl(null);
+    setIsLoadingImage(false);
   }, []);
 
   /**
@@ -667,7 +731,7 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
               ticket={ticket}
               onEdit={() => onEdit(ticket.id)}
               onDelete={() => handleDeleteClick(ticket)}
-              onViewImage={ticket.imageUrl ? () => handleViewImage(ticket.imageUrl!) : undefined}
+              onViewImage={(ticket.imageUrl || ticket.driveImageId) ? () => handleViewImage(ticket) : undefined}
               onDownloadReceipt={onDownloadReceipt ? () => handleDownloadReceiptClick(ticket) : undefined}
             />
           ))}
@@ -684,9 +748,10 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
       )}
 
       {/* Image Viewer Modal */}
-      {viewingImageUrl && (
+      {(viewingImageUrl || isLoadingImage) && (
         <ImageViewerModal
           imageUrl={viewingImageUrl}
+          isLoading={isLoadingImage}
           onClose={handleCloseImageViewer}
         />
       )}

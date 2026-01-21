@@ -25,7 +25,8 @@ export interface TicketRecord {
   departure: string;                   // Departure station
   destination: string;                 // Destination station
   purpose: string;                     // Business trip purpose
-  imageUrl?: string;                   // Ticket image (Base64 or Blob URL)
+  imageUrl?: string;                   // Ticket image (Base64 for local storage)
+  driveImageId?: string;               // Google Drive file ID for the image
   createdAt: string;                   // Created time ISO 8601
   updatedAt: string;                   // Updated time ISO 8601
   syncStatus: TicketSyncStatus;        // Sync status

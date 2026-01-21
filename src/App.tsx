@@ -25,6 +25,7 @@ import { OCREngineIndicator } from './components/OCREngineIndicator';
 import { ApiKeySettings } from './components/ApiKeySettings';
 import { ocrManager } from './services/ocrManager';
 import { googleAuthService } from './services/googleAuthService';
+import { googleDriveService } from './services/googleDriveService';
 import { llmConfigService } from './services/llmConfigService';
 import type { OCREngineType, OCRResultWithMeta } from './types/ocr';
 import { blobToBase64, compressImage } from './utils/imageUtils';
@@ -265,7 +266,7 @@ function AppContent() {
 
   /**
    * Handle OCR preview confirmation
-   * Saves ticket with Base64 image locally
+   * Saves ticket with Base64 image locally, then uploads image to Drive in background
    */
   const handleOCRConfirm = useCallback(async (formData: TicketFormData) => {
     const file = appState.imageFile;
@@ -286,8 +287,9 @@ function AppContent() {
       // Create ticket record
       const isLoggedIn = googleAuthService.isAuthorized();
       const now = new Date().toISOString();
+      const ticketId = generateUUID();
       const ticket: TicketRecord = {
-        id: generateUUID(),
+        id: ticketId,
         ...formData,
         imageUrl,
         createdAt: now,
@@ -295,7 +297,7 @@ function AppContent() {
         syncStatus: isLoggedIn ? 'pending' : 'local',
       };
 
-      // Save ticket
+      // Save ticket locally first (fast)
       await addTicket(ticket);
 
       // Close modal and reset state
@@ -306,6 +308,26 @@ function AppContent() {
         imageFile: null,
         submitError: null,
       }));
+
+      // Upload image to Google Drive in background (don't block UI)
+      if (isLoggedIn) {
+        const fileName = `ticket-${ticketId}.jpg`;
+        googleDriveService.uploadImage(compressedFile, fileName, formData.travelDate)
+          .then(async (driveImageId) => {
+            // Update ticket with Drive image ID
+            const updatedTicket: TicketRecord = {
+              ...ticket,
+              driveImageId,
+              updatedAt: new Date().toISOString(),
+            };
+            await updateTicket(updatedTicket);
+            console.log(`[Image] Uploaded to Drive: ${driveImageId}`);
+          })
+          .catch((error) => {
+            console.warn('[Image] Failed to upload to Drive:', error);
+            // Image upload failed, but local save succeeded - not critical
+          });
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '儲存失敗';
@@ -318,7 +340,7 @@ function AppContent() {
     } finally {
       setProcessing(false);
     }
-  }, [setProcessing, addTicket, appState.imageFile]);
+  }, [setProcessing, addTicket, updateTicket, appState.imageFile]);
 
   /**
    * Handle OCR preview cancellation

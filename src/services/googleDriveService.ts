@@ -548,21 +548,29 @@ class GoogleDriveService {
 
   /**
    * Upload an image file to Google Drive
-   * Stores ticket images in a subfolder called "images"
+   * Stores ticket images in a subfolder organized by year-month (e.g., images/2024-01/)
    *
    * @param imageBlob - The image data as Blob
    * @param fileName - The filename for the image (e.g., ticket-{id}.jpg)
-   * @returns Promise<string> - The web content link URL for the uploaded image
+   * @param travelDate - The travel date in YYYY-MM-DD format (for folder organization)
+   * @returns Promise<string> - The Google Drive file ID
    */
-  async uploadImage(imageBlob: Blob, fileName: string): Promise<string> {
+  async uploadImage(imageBlob: Blob, fileName: string, travelDate?: string): Promise<string> {
     const folderId = await this.ensureFolder();
 
-    // Ensure images subfolder exists
-    const imagesFolderId = await this.ensureImagesFolder(folderId);
+    // Ensure images subfolder exists, organized by year-month
+    const yearMonth = travelDate ? travelDate.substring(0, 7) : new Date().toISOString().substring(0, 7);
+    const imagesFolderId = await this.ensureImagesFolder(folderId, yearMonth);
 
     const accessToken = googleAuthService.getAccessToken();
     if (!accessToken) {
       throw new Error('Not authorized. Please login with Google first.');
+    }
+
+    // Check if image already exists (to avoid duplicates)
+    const existingId = await this.findImageInFolder(imagesFolderId, fileName);
+    if (existingId) {
+      return existingId;
     }
 
     // Create multipart request body
@@ -593,7 +601,7 @@ class GoogleDriveService {
       closeDelimiter;
 
     const response = await fetch(
-      `${GOOGLE_DRIVE_UPLOAD_API_BASE}/files?uploadType=multipart&fields=id,webContentLink,webViewLink`,
+      `${GOOGLE_DRIVE_UPLOAD_API_BASE}/files?uploadType=multipart&fields=id`,
       {
         method: 'POST',
         headers: {
@@ -614,15 +622,106 @@ class GoogleDriveService {
     // Make the file publicly viewable
     await this.makeFilePublic(data.id);
 
-    // Return the direct link to the image
-    return `https://drive.google.com/uc?id=${data.id}`;
+    // Return the file ID
+    return data.id;
   }
 
   /**
-   * Ensure the images subfolder exists
+   * Find an image file in the images folder by name
    */
-  private async ensureImagesFolder(parentFolderId: string): Promise<string> {
-    const query = `name = 'images' and mimeType = '${FOLDER_MIME_TYPE}' and '${parentFolderId}' in parents and trashed = false`;
+  private async findImageInFolder(imagesFolderId: string, fileName: string): Promise<string | null> {
+    const query = `name = '${this.escapeQueryString(fileName)}' and '${imagesFolderId}' in parents and trashed = false`;
+
+    const searchParams = new URLSearchParams({
+      q: query,
+      fields: 'files(id)',
+      spaces: 'drive',
+    });
+
+    const response = await fetch(`${GOOGLE_DRIVE_API_BASE}/files?${searchParams.toString()}`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data: DriveFilesListResponse = await response.json();
+    return data.files && data.files.length > 0 ? data.files[0].id : null;
+  }
+
+  /**
+   * Get the viewable URL for a Google Drive image
+   *
+   * @param fileId - The Google Drive file ID
+   * @returns The URL to view/download the image
+   */
+  getImageUrl(fileId: string): string {
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+
+  /**
+   * Download an image from Google Drive and return as base64 data URL
+   * Used to restore images from cloud when local storage is cleared
+   *
+   * @param fileId - The Google Drive file ID
+   * @returns Promise<string> - Base64 data URL of the image
+   */
+  async downloadImage(fileId: string): Promise<string> {
+    const accessToken = googleAuthService.getAccessToken();
+    if (!accessToken) {
+      throw new Error('Not authorized. Please login with Google first.');
+    }
+
+    const response = await fetch(`${GOOGLE_DRIVE_API_BASE}/files/${fileId}?alt=media`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to download image: ${response.statusText}`);
+    }
+
+    // Convert response to blob, then to base64
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /**
+   * Ensure the images subfolder exists with year-month organization
+   * Creates folder structure: images/{yearMonth}/ (e.g., images/2024-01/)
+   *
+   * @param parentFolderId - The parent folder ID (app root folder)
+   * @param yearMonth - The year-month string in YYYY-MM format
+   * @returns Promise<string> - The year-month subfolder ID
+   */
+  private async ensureImagesFolder(parentFolderId: string, yearMonth: string): Promise<string> {
+    // First, ensure the "images" folder exists
+    const imagesFolderId = await this.ensureSubfolder(parentFolderId, 'images');
+
+    // Then, ensure the year-month subfolder exists within images
+    const yearMonthFolderId = await this.ensureSubfolder(imagesFolderId, yearMonth);
+
+    return yearMonthFolderId;
+  }
+
+  /**
+   * Ensure a subfolder exists within a parent folder
+   *
+   * @param parentFolderId - The parent folder ID
+   * @param folderName - The name of the subfolder to ensure
+   * @returns Promise<string> - The subfolder ID
+   */
+  private async ensureSubfolder(parentFolderId: string, folderName: string): Promise<string> {
+    const query = `name = '${this.escapeQueryString(folderName)}' and mimeType = '${FOLDER_MIME_TYPE}' and '${parentFolderId}' in parents and trashed = false`;
 
     const searchParams = new URLSearchParams({
       q: query,
@@ -636,7 +735,7 @@ class GoogleDriveService {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to search for images folder');
+      throw new Error(`Failed to search for ${folderName} folder`);
     }
 
     const data: DriveFilesListResponse = await response.json();
@@ -645,9 +744,9 @@ class GoogleDriveService {
       return data.files[0].id;
     }
 
-    // Create images folder
+    // Create the subfolder
     const metadata = {
-      name: 'images',
+      name: folderName,
       mimeType: FOLDER_MIME_TYPE,
       parents: [parentFolderId],
     };
@@ -659,7 +758,7 @@ class GoogleDriveService {
     });
 
     if (!createResponse.ok) {
-      throw new Error('Failed to create images folder');
+      throw new Error(`Failed to create ${folderName} folder`);
     }
 
     const folderData: DriveFile = await createResponse.json();
