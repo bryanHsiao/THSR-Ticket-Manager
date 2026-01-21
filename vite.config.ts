@@ -17,6 +17,7 @@ export default defineConfig({
   // 注入環境變數
   define: {
     'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(APP_CONFIG.GOOGLE_CLIENT_ID),
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
   },
   server: {
     allowedHosts: ['localhost', '.ngrok-free.app', '.ngrok.io'],

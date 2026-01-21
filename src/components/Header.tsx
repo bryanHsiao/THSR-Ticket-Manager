@@ -214,9 +214,22 @@ export function Header({
           {/* Left section: App title and icon */}
           <div className="flex items-center gap-2 sm:gap-3">
             <TicketIcon />
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold whitespace-nowrap">
-              高鐵車票管理
-            </h1>
+            <div>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold whitespace-nowrap">
+                高鐵車票管理
+              </h1>
+              {/* Build version indicator */}
+              <p className="text-[10px] text-orange-200/70 hidden sm:block">
+                {import.meta.env.VITE_BUILD_TIME
+                  ? `v${new Date(import.meta.env.VITE_BUILD_TIME).toLocaleString('zh-TW', {
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}`
+                  : 'dev'}
+              </p>
+            </div>
           </div>
 
           {/* Right section: Settings, Sync status and auth button */}
