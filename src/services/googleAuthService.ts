@@ -265,6 +265,35 @@ class GoogleAuthService {
   }
 
   /**
+   * Check if an error is an authentication error
+   * @param error - The error to check
+   * @returns boolean - true if it's an auth error
+   */
+  isAuthError(error: unknown): boolean {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase();
+      return (
+        message.includes('invalid authentication') ||
+        message.includes('invalid credentials') ||
+        message.includes('oauth') ||
+        message.includes('access token') ||
+        message.includes('unauthorized') ||
+        message.includes('401')
+      );
+    }
+    return false;
+  }
+
+  /**
+   * Handle authentication failure by clearing credentials
+   * Call this when a sync/API call fails due to auth issues
+   */
+  handleAuthFailure(): void {
+    console.warn('Authentication failed, clearing credentials');
+    this.clearStoredCredentials();
+  }
+
+  /**
    * Revoke the access token
    */
   private async revokeToken(token: string): Promise<void> {

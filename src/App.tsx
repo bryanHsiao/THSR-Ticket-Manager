@@ -112,7 +112,7 @@ function AppContent() {
   const syncError = useTicketStore((state) => state.syncError);
 
   // Get user store state for Header component
-  const { isGoogleLoggedIn, lastSyncTime } = useUserStore();
+  const { isGoogleLoggedIn, lastSyncTime, logout } = useUserStore();
 
   // Derive sync status from user state
   const syncStatus: SyncStatus | null = isGoogleLoggedIn
@@ -123,14 +123,23 @@ function AppContent() {
   const syncTickets = useTicketStore((state) => state.syncTickets);
 
   // Auto-dismiss sync error toast after 5 seconds
+  // Also handle auth errors by logging out
   useEffect(() => {
     if (syncError) {
+      // Check if it's an auth error
+      if (googleAuthService.isAuthError(new Error(syncError))) {
+        googleAuthService.handleAuthFailure();
+        logout();
+        clearSyncError();
+        return;
+      }
+
       const timer = setTimeout(() => {
         clearSyncError();
       }, 5000);
       return () => clearTimeout(timer);
     }
-  }, [syncError, clearSyncError]);
+  }, [syncError, clearSyncError, logout]);
 
   // Initialize app on mount
   useEffect(() => {
@@ -161,12 +170,19 @@ function AppContent() {
       if (googleAuthService.isAuthorized()) {
         syncTickets()
           .then(() => console.log('Cloud sync completed'))
-          .catch((error) => console.warn('Cloud sync failed, using local data:', error));
+          .catch((error) => {
+            console.warn('Cloud sync failed, using local data:', error);
+            // If auth error, clear credentials and logout
+            if (googleAuthService.isAuthError(error)) {
+              googleAuthService.handleAuthFailure();
+              logout();
+            }
+          });
       }
     };
 
     initializeApp();
-  }, [loadTickets, syncTickets]);
+  }, [loadTickets, syncTickets, logout]);
 
   /**
    * Handle settings save
