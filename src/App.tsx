@@ -99,6 +99,8 @@ function AppContent() {
   const [appState, setAppState] = useState<AppState>(initialAppState);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false);
+  // Migration toast state
+  const [migrationToast, setMigrationToast] = useState<{ show: boolean; count: number }>({ show: false, count: 0 });
 
   // Ticket store actions
   const loadTickets = useTicketStore((state) => state.loadTickets);
@@ -229,6 +231,12 @@ function AppContent() {
     }
 
     console.log(`[Migration] Found ${ticketsToMigrate.length} images to migrate`);
+
+    // Show migration toast (auto-dismiss after 4 seconds)
+    setMigrationToast({ show: true, count: ticketsToMigrate.length });
+    setTimeout(() => {
+      setMigrationToast({ show: false, count: 0 });
+    }, 4000);
 
     // Migrate each ticket's image in sequence (to avoid overwhelming the API)
     for (const ticket of ticketsToMigrate) {
@@ -753,6 +761,27 @@ function AppContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Migration Toast - shows when migrating existing images to Drive */}
+      {migrationToast.show && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm animate-slide-up">
+          <div className="bg-blue-50 dark:bg-blue-900/90 border border-blue-300 dark:border-blue-700 rounded-lg shadow-lg p-4">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  正在備份圖片到雲端
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  {migrationToast.count} 張圖片將在背景上傳
+                </p>
+              </div>
             </div>
           </div>
         </div>
