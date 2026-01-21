@@ -122,6 +122,26 @@ function AppContent() {
   // Get syncTickets action
   const syncTickets = useTicketStore((state) => state.syncTickets);
 
+  // Check for pending sync tickets
+  const hasPendingSync = isGoogleLoggedIn && tickets.some(
+    (t) => t.syncStatus === 'pending' || t.syncStatus === 'local'
+  );
+
+  // Warn user before leaving if there are unsync'd tickets
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasPendingSync) {
+        e.preventDefault();
+        // Modern browsers ignore custom messages, but this triggers the dialog
+        e.returnValue = '有未同步的資料，確定要離開嗎？';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasPendingSync]);
+
   // Auto-dismiss sync error toast after 5 seconds
   // Also handle auth errors by logging out
   useEffect(() => {
