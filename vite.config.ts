@@ -34,7 +34,8 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait-primary',
-        start_url: '/',
+        scope: '/THSR-Ticket-Manager/',
+        start_url: '/THSR-Ticket-Manager/',
         lang: 'zh-TW',
         categories: ['productivity', 'utilities'],
         icons: [
