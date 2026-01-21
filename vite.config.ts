@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import packageJson from './package.json'
 
 // ============================================
 // 應用程式設定（可公開，不含敏感資訊）
@@ -17,7 +18,7 @@ export default defineConfig({
   // 注入環境變數
   define: {
     'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(APP_CONFIG.GOOGLE_CLIENT_ID),
-    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(new Date().toISOString()),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
   },
   server: {
     allowedHosts: ['localhost', '.ngrok-free.app', '.ngrok.io'],

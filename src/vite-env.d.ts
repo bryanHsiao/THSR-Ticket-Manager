@@ -2,7 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_GOOGLE_CLIENT_ID: string;
-  readonly VITE_BUILD_TIME: string;
+  readonly VITE_APP_VERSION: string;
 }
 
 interface ImportMeta {

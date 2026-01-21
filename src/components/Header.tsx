@@ -218,16 +218,9 @@ export function Header({
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold whitespace-nowrap">
                 高鐵車票管理
               </h1>
-              {/* Build version indicator */}
+              {/* Version indicator */}
               <p className="text-[10px] text-orange-200/70 hidden sm:block">
-                {import.meta.env.VITE_BUILD_TIME
-                  ? `v${new Date(import.meta.env.VITE_BUILD_TIME).toLocaleString('zh-TW', {
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}`
-                  : 'dev'}
+                v{import.meta.env.VITE_APP_VERSION || '0.0.0'}
               </p>
             </div>
           </div>
