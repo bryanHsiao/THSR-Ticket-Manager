@@ -77,8 +77,10 @@ class StorageService {
     // Upload image to Google Drive if logged in and image provided
     if (isLoggedIn && imageBlob) {
       try {
-        const fileName = `ticket-${ticket.id}.jpg`;
-        imageUrl = await googleDriveService.uploadImage(imageBlob, fileName);
+        // Filename format: yyyymmdd-ticketNumber.jpg
+        const dateStr = ticket.travelDate.replace(/-/g, '');
+        const fileName = `${dateStr}-${ticket.ticketNumber}.jpg`;
+        imageUrl = await googleDriveService.uploadImage(imageBlob, fileName, ticket.travelDate);
       } catch (error) {
         console.warn('Failed to upload image to Google Drive:', error);
         // Continue saving ticket without cloud image

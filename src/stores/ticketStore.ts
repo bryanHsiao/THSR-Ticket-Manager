@@ -14,6 +14,7 @@
 import { create } from 'zustand';
 import { storageService } from '../services/storageService';
 import { googleAuthService } from '../services/googleAuthService';
+import { googleDriveService } from '../services/googleDriveService';
 import { filterTickets, useFilterStore } from './filterStore';
 import type { TicketRecord, FilterOptions } from '../types/ticket';
 
@@ -134,7 +135,7 @@ const initialState: TicketState = {
  * }
  * ```
  */
-export const useTicketStore = create<TicketStore>((set) => ({
+export const useTicketStore = create<TicketStore>((set, get) => ({
   // Initial state
   ...initialState,
 
@@ -223,12 +224,22 @@ export const useTicketStore = create<TicketStore>((set) => ({
     set({ error: null });
 
     try {
+      // Get ticket before deleting to access driveImageId
+      const ticket = get().tickets.find((t) => t.id === id);
+
       await storageService.deleteTicket(id);
 
       // Update local state
       set((state) => ({
         tickets: state.tickets.filter((t) => t.id !== id),
       }));
+
+      // Delete image from Google Drive in background (if exists)
+      if (ticket?.driveImageId && googleAuthService.isAuthorized()) {
+        googleDriveService.deleteImage(ticket.driveImageId)
+          .then(() => console.log(`[Delete] Removed image from Drive: ${ticket.driveImageId}`))
+          .catch((err) => console.warn('[Delete] Failed to remove image from Drive:', err));
+      }
 
       // Process sync queue only (don't do full merge which would restore deleted items)
       if (googleAuthService.isAuthorized()) {

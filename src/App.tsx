@@ -245,8 +245,9 @@ function AppContent() {
         const response = await fetch(ticket.imageUrl!);
         const blob = await response.blob();
 
-        // Upload to Drive
-        const fileName = `ticket-${ticket.id}.jpg`;
+        // Upload to Drive with formatted filename: yyyymmdd-ticketNumber.jpg
+        const dateStr = ticket.travelDate.replace(/-/g, '');
+        const fileName = `${dateStr}-${ticket.ticketNumber}.jpg`;
         const driveImageId = await googleDriveService.uploadImage(
           blob,
           fileName,
@@ -377,7 +378,9 @@ function AppContent() {
 
       // Upload image to Google Drive in background (don't block UI)
       if (isLoggedIn) {
-        const fileName = `ticket-${ticketId}.jpg`;
+        // Filename format: yyyymmdd-ticketNumber.jpg
+        const dateStr = formData.travelDate.replace(/-/g, '');
+        const fileName = `${dateStr}-${formData.ticketNumber}.jpg`;
         googleDriveService.uploadImage(compressedFile, fileName, formData.travelDate)
           .then(async (driveImageId) => {
             // Update ticket with Drive image ID
