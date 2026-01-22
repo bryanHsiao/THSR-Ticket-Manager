@@ -20,7 +20,6 @@ import { useTicketStore } from '../stores/ticketStore';
 import { useFilterStore, filterTickets } from '../stores/filterStore';
 import { TicketCard } from './TicketCard';
 import { FilterBar } from './FilterBar';
-import { getReceiptFilePath, checkReceiptExists } from '../utils/receiptHelper';
 import { googleDriveService } from '../services/googleDriveService';
 import { googleAuthService } from '../services/googleAuthService';
 import type { TicketRecord } from '../types/ticket';
@@ -468,8 +467,6 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
   // State for image loading from Drive
   const [isLoadingImage, setIsLoadingImage] = useState(false);
-  // State for tracking which tickets have receipts downloaded
-  const [ticketsWithReceipts, setTicketsWithReceipts] = useState<Set<string>>(new Set());
 
   // Get ticket store state and actions
   const storeTickets = useTicketStore((state) => state.tickets);
@@ -503,19 +500,13 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     if (propTickets) {
       return tickets;
     }
-    let result = filterTickets(tickets, {
+    return filterTickets(tickets, {
       month,
       direction,
       searchText,
+      noReceipt,
     });
-
-    // Apply noReceipt filter
-    if (noReceipt) {
-      result = result.filter(ticket => !ticketsWithReceipts.has(ticket.id));
-    }
-
-    return result;
-  }, [tickets, propTickets, month, direction, searchText, noReceipt, ticketsWithReceipts]);
+  }, [tickets, propTickets, month, direction, searchText, noReceipt]);
 
   // Sort filtered tickets by travel date (newest first)
   const sortedTickets = useMemo(() => {
@@ -534,36 +525,6 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     }
   }, [propTickets, loadTickets]);
 
-  // Check receipt status for all tickets
-  useEffect(() => {
-    const checkAllReceipts = async () => {
-      const withReceipts = new Set<string>();
-
-      await Promise.all(
-        tickets.map(async (ticket) => {
-          if (ticket.travelDate && ticket.departure && ticket.destination && ticket.ticketNumber) {
-            const path = getReceiptFilePath({
-              travelDate: ticket.travelDate,
-              departure: ticket.departure,
-              destination: ticket.destination,
-              ticketNumber: ticket.ticketNumber,
-              bookingCode: ticket.bookingCode,
-            });
-            const exists = await checkReceiptExists(path);
-            if (exists) {
-              withReceipts.add(ticket.id);
-            }
-          }
-        })
-      );
-
-      setTicketsWithReceipts(withReceipts);
-    };
-
-    if (tickets.length > 0) {
-      checkAllReceipts();
-    }
-  }, [tickets]);
 
   /**
    * Handle delete button click - show confirmation dialog
