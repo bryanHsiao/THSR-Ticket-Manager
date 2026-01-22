@@ -269,6 +269,46 @@ class StorageService {
     // Merge using Last-Write-Wins strategy
     const mergedTickets = syncQueueService.mergeTickets(cloudTickets, localTickets);
 
+    // Upload missing images to Google Drive
+    // Find tickets that have local base64 image but no driveImageId
+    const ticketsNeedingImageUpload = mergedTickets.filter(
+      ticket => ticket.imageUrl?.startsWith('data:') && !ticket.driveImageId && !ticket.deleted
+    );
+
+    if (ticketsNeedingImageUpload.length > 0) {
+      console.log(`[syncToCloud] Uploading ${ticketsNeedingImageUpload.length} missing images...`);
+
+      for (const ticket of ticketsNeedingImageUpload) {
+        try {
+          // Convert base64 to Blob
+          const response = await fetch(ticket.imageUrl!);
+          const imageBlob = await response.blob();
+
+          // Generate filename: yyyymmdd-ticketNumber.jpg
+          const dateStr = ticket.travelDate.replace(/-/g, '');
+          const fileName = `${dateStr}-${ticket.ticketNumber}.jpg`;
+
+          // Upload to Drive
+          const driveImageId = await googleDriveService.uploadImage(imageBlob, fileName, ticket.travelDate);
+
+          // Update ticket with driveImageId
+          const ticketIndex = mergedTickets.findIndex(t => t.id === ticket.id);
+          if (ticketIndex !== -1) {
+            mergedTickets[ticketIndex] = {
+              ...mergedTickets[ticketIndex],
+              driveImageId,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+
+          console.log(`[syncToCloud] Uploaded image for ticket ${ticket.ticketNumber}`);
+        } catch (error) {
+          console.warn(`[syncToCloud] Failed to upload image for ticket ${ticket.ticketNumber}:`, error);
+          // Continue with other tickets even if one fails
+        }
+      }
+    }
+
     // Upload merged tickets to Google Drive
     await googleDriveService.uploadTickets(mergedTickets);
 
