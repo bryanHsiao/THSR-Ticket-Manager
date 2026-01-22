@@ -104,11 +104,8 @@ export const useUserStore = create<UserStore>((set) => ({
   logout: async () => {
     try {
       await googleAuthService.logout();
-
-      // Clear all local ticket data on logout
-      // Use dynamic import to avoid circular dependency
-      const { useTicketStore } = await import('./ticketStore');
-      await useTicketStore.getState().clearAllData();
+      // 保留本地資料，不清除 IndexedDB
+      // 登出後本地資料仍可離線使用，但不會抓取雲端資料
     } finally {
       // Always clear state, even if logout API call fails
       set({

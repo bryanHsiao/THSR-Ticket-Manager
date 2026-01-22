@@ -13,6 +13,7 @@
 import { useState, useEffect } from 'react';
 import type { TicketRecord, TicketSyncStatus, TravelDirection } from '../types/ticket';
 import { getReceiptFilePath, checkReceiptExists } from '../utils/receiptHelper';
+import { useUserStore } from '../stores/userStore';
 
 /**
  * Props for the TicketCard component
@@ -154,6 +155,12 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
   const directionText = getDirectionText(ticket.direction);
   const missingFields = getMissingFields(ticket);
   const hasIncompleteData = missingFields.length > 0;
+  const isLoggedIn = useUserStore((state) => state.isGoogleLoggedIn);
+
+  // Check if local image exists (base64 data URL)
+  const hasLocalImage = ticket.imageUrl && ticket.imageUrl.startsWith('data:');
+  // Show image button if: has local image OR (logged in AND has Drive image)
+  const canViewImage = hasLocalImage || (isLoggedIn && ticket.driveImageId);
 
   // Check if local receipt file exists
   const [receiptPath, setReceiptPath] = useState<string | null>(null);
@@ -252,8 +259,8 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
 
         {/* Header Row 2: Action Buttons - Touch friendly with larger targets */}
         <div className="flex items-center justify-end gap-3 mb-3 border-b border-gray-100 dark:border-gray-700 pb-3">
-          {/* View Image Button - Show if local image or Drive image exists */}
-          {(ticket.imageUrl || ticket.driveImageId) && (
+          {/* View Image Button - Show if local image exists OR (logged in AND has Drive image) */}
+          {canViewImage && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -330,16 +337,17 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
             </svg>
           </button>
 
-          {/* View Receipt Button - Show if cloud or local receipt exists */}
-          {(ticket.driveReceiptId || receiptPath) && (
+          {/* View Receipt Button - Show if local receipt exists OR (logged in AND has Drive receipt) */}
+          {(receiptPath || (isLoggedIn && ticket.driveReceiptId)) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                if (ticket.driveReceiptId) {
-                  // Open cloud receipt in new tab
-                  window.open(`https://drive.google.com/file/d/${ticket.driveReceiptId}/view`, '_blank');
-                } else if (receiptPath) {
+                if (receiptPath) {
+                  // Prefer local receipt if available
                   handleViewReceipt();
+                } else if (isLoggedIn && ticket.driveReceiptId) {
+                  // Open cloud receipt in new tab (only if logged in)
+                  window.open(`https://drive.google.com/file/d/${ticket.driveReceiptId}/view`, '_blank');
                 }
               }}
               className="
