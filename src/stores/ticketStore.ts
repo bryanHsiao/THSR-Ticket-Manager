@@ -89,6 +89,12 @@ interface TicketActions {
    * Clear sync error state
    */
   clearSyncError: () => void;
+
+  /**
+   * Clear all local data (tickets from IndexedDB and state)
+   * Called on logout to ensure clean slate
+   */
+  clearAllData: () => Promise<void>;
 }
 
 /**
@@ -292,6 +298,23 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
   clearSyncError: () => {
     set({ syncError: null });
+  },
+
+  clearAllData: async () => {
+    try {
+      await storageService.clearAllData();
+      set({
+        tickets: [],
+        isLoading: false,
+        error: null,
+        isProcessing: false,
+        syncError: null,
+      });
+      console.log('[ticketStore] All data cleared');
+    } catch (error) {
+      console.error('[ticketStore] Failed to clear data:', error);
+      throw error;
+    }
   },
 }));
 

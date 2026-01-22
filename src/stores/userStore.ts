@@ -104,6 +104,11 @@ export const useUserStore = create<UserStore>((set) => ({
   logout: async () => {
     try {
       await googleAuthService.logout();
+
+      // Clear all local ticket data on logout
+      // Use dynamic import to avoid circular dependency
+      const { useTicketStore } = await import('./ticketStore');
+      await useTicketStore.getState().clearAllData();
     } finally {
       // Always clear state, even if logout API call fails
       set({
