@@ -16,7 +16,7 @@ import { storageService } from '../services/storageService';
 import { googleAuthService } from '../services/googleAuthService';
 import { googleDriveService } from '../services/googleDriveService';
 import { filterTickets, useFilterStore } from './filterStore';
-import type { TicketRecord, FilterOptions } from '../types/ticket';
+import type { TicketRecord } from '../types/ticket';
 
 /**
  * Ticket store state interface
@@ -305,10 +305,11 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
  */
 export const selectFilteredTickets = (state: TicketStore): TicketRecord[] => {
   const filterState = useFilterStore.getState();
-  const filters: FilterOptions = {
+  const filters = {
     month: filterState.month,
     direction: filterState.direction,
     searchText: filterState.searchText,
+    noReceipt: filterState.noReceipt,
   };
 
   return filterTickets(state.tickets, filters);

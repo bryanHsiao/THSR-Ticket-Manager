@@ -162,7 +162,7 @@ export function FilterBar() {
         `}
         aria-pressed={noReceipt}
       >
-        未下載
+        無憑證
       </button>
 
       {/* Search input - flex-1 to fill remaining space */}

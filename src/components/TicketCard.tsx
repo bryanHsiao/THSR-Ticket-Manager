@@ -330,12 +330,17 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
             </svg>
           </button>
 
-          {/* View Receipt Button - Show if local receipt exists */}
-          {receiptPath && (
+          {/* View Receipt Button - Show if cloud or local receipt exists */}
+          {(ticket.driveReceiptId || receiptPath) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleViewReceipt();
+                if (ticket.driveReceiptId) {
+                  // Open cloud receipt in new tab
+                  window.open(`https://drive.google.com/file/d/${ticket.driveReceiptId}/view`, '_blank');
+                } else if (receiptPath) {
+                  handleViewReceipt();
+                }
               }}
               className="
                 p-2.5
@@ -346,7 +351,7 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
                 transition-colors duration-200
               "
               aria-label={`檢視車票 ${ticket.ticketNumber} 的電子憑證`}
-              title="檢視憑證"
+              title={ticket.driveReceiptId ? '檢視雲端憑證' : '檢視本地憑證'}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path

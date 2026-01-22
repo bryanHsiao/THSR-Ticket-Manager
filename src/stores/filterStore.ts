@@ -155,9 +155,9 @@ export const useFilterStore = create<FilterStore>((set) => ({
  */
 export function filterTickets(
   tickets: TicketRecord[],
-  filters: FilterOptions
+  filters: FilterOptions & { noReceipt?: boolean }
 ): TicketRecord[] {
-  const { month, direction, searchText } = filters;
+  const { month, direction, searchText, noReceipt } = filters;
 
   return tickets.filter((ticket) => {
     // Filter by month (YYYY-MM format)
@@ -183,6 +183,13 @@ export function filterTickets(
       const destinationMatch = ticket.destination.toLowerCase().includes(searchLower);
 
       if (!ticketNumberMatch && !purposeMatch && !destinationMatch) {
+        return false;
+      }
+    }
+
+    // Filter by no receipt (show only tickets without driveReceiptId)
+    if (noReceipt) {
+      if (ticket.driveReceiptId) {
         return false;
       }
     }
