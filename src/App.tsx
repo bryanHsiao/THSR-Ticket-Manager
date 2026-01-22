@@ -103,6 +103,9 @@ function AppContent() {
   const [migrationToast, setMigrationToast] = useState<{ show: boolean; count: number }>({ show: false, count: 0 });
   // Receipt upload toast state
   const [receiptToast, setReceiptToast] = useState<{ show: boolean; message: string; type: 'info' | 'success' | 'error' }>({ show: false, message: '', type: 'info' });
+  // Manual sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncToast, setSyncToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
   // Ticket store actions
   const loadTickets = useTicketStore((state) => state.loadTickets);
@@ -592,6 +595,29 @@ function AppContent() {
     event.target.value = '';
   }, [updateTicket]);
 
+  /**
+   * Handle manual sync button click
+   * Shows loading state and toast feedback
+   */
+  const handleManualSync = useCallback(async () => {
+    if (isSyncing) return; // Prevent double-click
+
+    setIsSyncing(true);
+    setSyncToast({ show: false, message: '', type: 'success' });
+
+    try {
+      await syncTickets();
+      setSyncToast({ show: true, message: '同步完成', type: 'success' });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '同步失敗';
+      setSyncToast({ show: true, message: errorMessage, type: 'error' });
+    } finally {
+      setIsSyncing(false);
+      // Auto-dismiss toast after 3 seconds
+      setTimeout(() => setSyncToast({ show: false, message: '', type: 'success' }), 3000);
+    }
+  }, [isSyncing, syncTickets]);
+
   // Show loading state during initialization
   if (!isInitialized) {
     return (
@@ -916,25 +942,63 @@ function AppContent() {
         </div>
       )}
 
+      {/* Sync Toast */}
+      {syncToast.show && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm animate-slide-up">
+          <div className={`rounded-lg shadow-lg p-4 border ${
+            syncToast.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/90 border-green-300 dark:border-green-700'
+              : 'bg-red-50 dark:bg-red-900/90 border-red-300 dark:border-red-700'
+          }`}>
+            <div className="flex items-center gap-3">
+              {syncToast.type === 'success' ? (
+                <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+              <p className={`text-sm font-medium ${
+                syncToast.type === 'success'
+                  ? 'text-green-800 dark:text-green-200'
+                  : 'text-red-800 dark:text-red-200'
+              }`}>
+                {syncToast.message}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Action Buttons - Desktop only */}
       {isGoogleLoggedIn && (
         <div className="hidden sm:flex fixed right-6 bottom-6 z-40 flex-col items-end gap-3">
           {/* Sync Button - FAB style */}
           <button
-            onClick={() => syncTickets()}
-            className="
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className={`
               group
               flex items-center justify-center
               w-14 h-14
-              bg-blue-500 hover:bg-blue-600
               text-white
               rounded-full
               shadow-lg hover:shadow-xl
               transition-all duration-300 ease-out
-            "
-            title="同步到雲端"
+              ${isSyncing
+                ? 'bg-blue-400 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'}
+            `}
+            title={isSyncing ? '同步中...' : '同步到雲端'}
           >
-            <svg className="w-6 h-6 transition-transform duration-300 group-hover:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className={`w-6 h-6 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </button>
