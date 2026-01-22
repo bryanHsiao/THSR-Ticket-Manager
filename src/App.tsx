@@ -683,65 +683,6 @@ function AppContent() {
             progressMessage={appState.progressMessage}
           />
 
-          {/* Floating Action Buttons - Large desktop only (1280px+) */}
-          {isGoogleLoggedIn && (
-            <div className="hidden xl:flex fixed right-6 top-48 z-40 flex-col gap-3">
-              {/* Sync Button */}
-              <button
-                onClick={handleManualSync}
-                disabled={isSyncing}
-                className={`
-                  group
-                  flex items-center justify-center
-                  w-12 h-12
-                  text-white
-                  rounded-full
-                  shadow-lg hover:shadow-xl
-                  transition-all duration-300 ease-out
-                  ${isSyncing
-                    ? 'bg-blue-400 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600'}
-                `}
-                title={isSyncing ? '同步中...' : '同步到雲端'}
-              >
-                <svg
-                  className={`w-5 h-5 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
-
-              {/* Receipt Upload Button */}
-              <label
-                className="
-                  group
-                  flex items-center justify-center
-                  w-12 h-12
-                  bg-purple-500 hover:bg-purple-600
-                  text-white
-                  rounded-full
-                  shadow-lg hover:shadow-xl
-                  cursor-pointer
-                  transition-all duration-300 ease-out
-                "
-                title="上傳憑證 PDF"
-              >
-                <svg className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <input
-                  type="file"
-                  accept=".pdf"
-                  multiple
-                  onChange={handleReceiptUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
-          )}
         </div>
       </div>
 
@@ -1031,6 +972,65 @@ function AppContent() {
         </div>
       )}
 
+      {/* Floating Action Buttons - Desktop only (1024px+) */}
+      {isGoogleLoggedIn && (
+        <div className="hidden lg:flex fixed right-6 top-1/3 z-40 flex-col gap-3">
+          {/* Sync Button */}
+          <button
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className={`
+              group
+              flex items-center justify-center
+              w-12 h-12
+              text-white
+              rounded-full
+              shadow-lg hover:shadow-xl
+              transition-all duration-300 ease-out
+              ${isSyncing
+                ? 'bg-blue-400 cursor-not-allowed'
+                : 'bg-blue-500 hover:bg-blue-600'}
+            `}
+            title={isSyncing ? '同步中...' : '同步到雲端'}
+          >
+            <svg
+              className={`w-5 h-5 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+
+          {/* Receipt Upload Button */}
+          <label
+            className="
+              group
+              flex items-center justify-center
+              w-12 h-12
+              bg-purple-500 hover:bg-purple-600
+              text-white
+              rounded-full
+              shadow-lg hover:shadow-xl
+              cursor-pointer
+              transition-all duration-300 ease-out
+            "
+            title="上傳憑證 PDF"
+          >
+            <svg className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <input
+              type="file"
+              accept=".pdf"
+              multiple
+              onChange={handleReceiptUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
+      )}
     </div>
   );
 }
