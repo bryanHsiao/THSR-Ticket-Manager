@@ -101,6 +101,8 @@ function AppContent() {
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(false);
   // Migration toast state
   const [migrationToast, setMigrationToast] = useState<{ show: boolean; count: number }>({ show: false, count: 0 });
+  // Receipt upload toast state
+  const [receiptToast, setReceiptToast] = useState<{ show: boolean; message: string; type: 'info' | 'success' | 'error' }>({ show: false, message: '', type: 'info' });
 
   // Ticket store actions
   const loadTickets = useTicketStore((state) => state.loadTickets);
@@ -505,6 +507,91 @@ function AppContent() {
     });
   }, []);
 
+  /**
+   * Handle receipt PDF upload
+   * Parses filename to extract ticket number, matches to existing tickets, and uploads to Drive
+   * Filename format: THSR_{date}_{from}-{to}_{ticketNumber}.pdf
+   */
+  const handleReceiptUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    // Check if logged in
+    if (!googleAuthService.isAuthorized()) {
+      setReceiptToast({ show: true, message: '請先登入 Google 帳號', type: 'error' });
+      setTimeout(() => setReceiptToast({ show: false, message: '', type: 'info' }), 3000);
+      return;
+    }
+
+    const currentTickets = useTicketStore.getState().tickets;
+    let uploadedCount = 0;
+    let skippedCount = 0;
+    let notFoundCount = 0;
+
+    setReceiptToast({ show: true, message: `正在上傳 ${files.length} 個憑證...`, type: 'info' });
+
+    for (const file of Array.from(files)) {
+      try {
+        // Parse filename: THSR_2024-12-09_左營-台北_1213103440058.pdf
+        const match = file.name.match(/THSR_(\d{4}-\d{2}-\d{2})_(.+)-(.+)_(\d{13})\.pdf/);
+        if (!match) {
+          console.warn(`[Receipt] Invalid filename format: ${file.name}`);
+          skippedCount++;
+          continue;
+        }
+
+        const [, travelDate, , , ticketNumber] = match;
+
+        // Find matching ticket
+        const ticket = currentTickets.find(t => t.ticketNumber === ticketNumber);
+        if (!ticket) {
+          console.warn(`[Receipt] No matching ticket found for: ${ticketNumber}`);
+          notFoundCount++;
+          continue;
+        }
+
+        // Skip if already has receipt
+        if (ticket.driveReceiptId) {
+          console.log(`[Receipt] Ticket ${ticketNumber} already has receipt, skipping`);
+          skippedCount++;
+          continue;
+        }
+
+        // Upload to Drive
+        const driveReceiptId = await googleDriveService.uploadReceipt(file, file.name, travelDate);
+
+        // Update ticket with receipt ID
+        const updatedTicket: TicketRecord = {
+          ...ticket,
+          driveReceiptId,
+          updatedAt: new Date().toISOString(),
+        };
+        await updateTicket(updatedTicket);
+
+        uploadedCount++;
+        console.log(`[Receipt] Uploaded receipt for ticket ${ticketNumber}`);
+      } catch (error) {
+        console.error(`[Receipt] Failed to upload ${file.name}:`, error);
+      }
+    }
+
+    // Show result
+    let message = '';
+    if (uploadedCount > 0) message += `已上傳 ${uploadedCount} 個憑證`;
+    if (skippedCount > 0) message += (message ? '，' : '') + `略過 ${skippedCount} 個`;
+    if (notFoundCount > 0) message += (message ? '，' : '') + `${notFoundCount} 個找不到對應車票`;
+
+    setReceiptToast({
+      show: true,
+      message: message || '沒有憑證被上傳',
+      type: uploadedCount > 0 ? 'success' : 'info'
+    });
+    setTimeout(() => setReceiptToast({ show: false, message: '', type: 'info' }), 4000);
+
+    // Clear file input
+    event.target.value = '';
+  }, [updateTicket]);
+
   // Show loading state during initialization
   if (!isInitialized) {
     return (
@@ -569,6 +656,28 @@ function AppContent() {
             isProcessing={isProcessing || appState.isProcessingOCR}
             progressMessage={appState.progressMessage}
           />
+
+          {/* Receipt Upload Button - Desktop only */}
+          {isGoogleLoggedIn && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 hidden sm:block">
+              <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="text-sm font-medium">上傳憑證 PDF</span>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  onChange={handleReceiptUpload}
+                  className="hidden"
+                />
+              </label>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                選擇 Playwright 下載的 PDF 檔案，自動匹配票號上傳到雲端
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -785,6 +894,44 @@ function AppContent() {
                   {migrationToast.count} 張圖片將在背景上傳
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Upload Toast */}
+      {receiptToast.show && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:max-w-sm animate-slide-up">
+          <div className={`rounded-lg shadow-lg p-4 border ${
+            receiptToast.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/90 border-green-300 dark:border-green-700'
+              : receiptToast.type === 'error'
+              ? 'bg-red-50 dark:bg-red-900/90 border-red-300 dark:border-red-700'
+              : 'bg-blue-50 dark:bg-blue-900/90 border-blue-300 dark:border-blue-700'
+          }`}>
+            <div className="flex items-center gap-3">
+              {receiptToast.type === 'success' ? (
+                <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : receiptToast.type === 'error' ? (
+                <svg className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              <p className={`text-sm font-medium ${
+                receiptToast.type === 'success'
+                  ? 'text-green-800 dark:text-green-200'
+                  : receiptToast.type === 'error'
+                  ? 'text-red-800 dark:text-red-200'
+                  : 'text-blue-800 dark:text-blue-200'
+              }`}>
+                {receiptToast.message}
+              </p>
             </div>
           </div>
         </div>

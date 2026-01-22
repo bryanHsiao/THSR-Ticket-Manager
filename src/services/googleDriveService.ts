@@ -41,6 +41,11 @@ const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const JSON_MIME_TYPE = 'application/json';
 
 /**
+ * MIME type for PDF files
+ */
+const PDF_MIME_TYPE = 'application/pdf';
+
+/**
  * Default tickets file name (using config constant)
  */
 const TICKETS_FILE_NAME = GOOGLE_DRIVE_TICKETS_FILE;
@@ -823,6 +828,148 @@ class GoogleDriveService {
         type: 'anyone',
       }),
     });
+  }
+
+  /**
+   * Upload a receipt PDF file to Google Drive
+   * Stores receipts in a subfolder organized by year-month (e.g., receipts/2024-01/)
+   *
+   * @param pdfBlob - The PDF data as Blob
+   * @param fileName - The filename for the receipt (e.g., THSR_2024-01-01_台北-左營_1234567890123.pdf)
+   * @param travelDate - The travel date in YYYY-MM-DD format (for folder organization)
+   * @returns Promise<string> - The Google Drive file ID
+   */
+  async uploadReceipt(pdfBlob: Blob, fileName: string, travelDate?: string): Promise<string> {
+    const folderId = await this.ensureFolder();
+
+    // Ensure receipts subfolder exists, organized by year-month
+    const yearMonth = travelDate ? travelDate.substring(0, 7) : new Date().toISOString().substring(0, 7);
+    const receiptsFolderId = await this.ensureReceiptsFolder(folderId, yearMonth);
+
+    const accessToken = googleAuthService.getAccessToken();
+    if (!accessToken) {
+      throw new Error('Not authorized. Please login with Google first.');
+    }
+
+    // Check if receipt already exists (to avoid duplicates)
+    const existingId = await this.findReceiptInFolder(receiptsFolderId, fileName);
+    if (existingId) {
+      return existingId;
+    }
+
+    // Create multipart request body
+    const boundary = '-------314159265358979323846';
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    const metadata = {
+      name: fileName,
+      mimeType: PDF_MIME_TYPE,
+      parents: [receiptsFolderId],
+    };
+
+    // Convert blob to base64
+    const arrayBuffer = await pdfBlob.arrayBuffer();
+    const base64Data = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    const multipartRequestBody =
+      delimiter +
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+      JSON.stringify(metadata) +
+      delimiter +
+      `Content-Type: ${PDF_MIME_TYPE}\r\n` +
+      'Content-Transfer-Encoding: base64\r\n\r\n' +
+      base64Data +
+      closeDelimiter;
+
+    const response = await fetch(
+      `${GOOGLE_DRIVE_UPLOAD_API_BASE}/files?uploadType=multipart&fields=id`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`,
+        },
+        body: multipartRequestBody,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`Failed to upload receipt: ${errorData.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // Make the file publicly viewable
+    await this.makeFilePublic(data.id);
+
+    return data.id;
+  }
+
+  /**
+   * Ensure the receipts subfolder exists with year-month organization
+   * Creates folder structure: receipts/{yearMonth}/ (e.g., receipts/2024-01/)
+   *
+   * @param parentFolderId - The parent folder ID (app root folder)
+   * @param yearMonth - The year-month string in YYYY-MM format
+   * @returns Promise<string> - The year-month subfolder ID
+   */
+  private async ensureReceiptsFolder(parentFolderId: string, yearMonth: string): Promise<string> {
+    // First, ensure the "receipts" folder exists
+    const receiptsFolderId = await this.ensureSubfolder(parentFolderId, 'receipts');
+
+    // Then, ensure the year-month subfolder exists within receipts
+    const yearMonthFolderId = await this.ensureSubfolder(receiptsFolderId, yearMonth);
+
+    return yearMonthFolderId;
+  }
+
+  /**
+   * Find a receipt file in the receipts folder by name
+   */
+  private async findReceiptInFolder(receiptsFolderId: string, fileName: string): Promise<string | null> {
+    const query = `name = '${this.escapeQueryString(fileName)}' and '${receiptsFolderId}' in parents and trashed = false`;
+
+    const searchParams = new URLSearchParams({
+      q: query,
+      fields: 'files(id)',
+      spaces: 'drive',
+    });
+
+    const response = await fetch(`${GOOGLE_DRIVE_API_BASE}/files?${searchParams.toString()}`, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data: DriveFilesListResponse = await response.json();
+    return data.files && data.files.length > 0 ? data.files[0].id : null;
+  }
+
+  /**
+   * Get the viewable URL for a Google Drive receipt
+   *
+   * @param fileId - The Google Drive file ID
+   * @returns The URL to view/download the receipt
+   */
+  getReceiptUrl(fileId: string): string {
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+  }
+
+  /**
+   * Delete a receipt from Google Drive by its file ID
+   * Used when deleting a ticket to also remove its receipt from Drive
+   *
+   * @param fileId - The Google Drive file ID of the receipt
+   */
+  async deleteReceipt(fileId: string): Promise<void> {
+    await this.deleteFile(fileId);
   }
 }
 

@@ -27,6 +27,7 @@ export interface TicketRecord {
   purpose: string;                     // Business trip purpose
   imageUrl?: string;                   // Ticket image (Base64 for local storage)
   driveImageId?: string;               // Google Drive file ID for the image
+  driveReceiptId?: string;             // Google Drive file ID for the receipt PDF
   createdAt: string;                   // Created time ISO 8601
   updatedAt: string;                   // Updated time ISO 8601
   syncStatus: TicketSyncStatus;        // Sync status
