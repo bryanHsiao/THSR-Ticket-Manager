@@ -683,9 +683,9 @@ function AppContent() {
             progressMessage={appState.progressMessage}
           />
 
-          {/* Floating Action Buttons - Desktop only, positioned on right side */}
+          {/* Floating Action Buttons - Large desktop only (1280px+) */}
           {isGoogleLoggedIn && (
-            <div className="hidden sm:flex absolute -right-20 top-1/2 -translate-y-1/2 flex-col gap-3">
+            <div className="hidden xl:flex fixed right-6 top-48 z-40 flex-col gap-3">
               {/* Sync Button */}
               <button
                 onClick={handleManualSync}
