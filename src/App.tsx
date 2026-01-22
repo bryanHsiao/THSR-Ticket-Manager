@@ -916,35 +916,56 @@ function AppContent() {
         </div>
       )}
 
-      {/* Floating Receipt Upload Button - Desktop only */}
+      {/* Floating Buttons - Desktop only */}
       {isGoogleLoggedIn && (
-        <label
-          className="
-            hidden sm:flex
-            fixed right-6 bottom-6 z-40
-            items-center gap-2
-            px-4 py-3
-            bg-purple-600 hover:bg-purple-700
-            text-white
-            rounded-full
-            shadow-lg hover:shadow-xl
-            cursor-pointer
-            transition-all duration-200
-          "
-          title="上傳憑證 PDF 到雲端"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span className="text-sm font-medium">上傳憑證</span>
-          <input
-            type="file"
-            accept=".pdf"
-            multiple
-            onChange={handleReceiptUpload}
-            className="hidden"
-          />
-        </label>
+        <div className="hidden sm:flex fixed right-6 bottom-6 z-40 flex-col gap-3">
+          {/* Sync Button */}
+          <button
+            onClick={() => syncTickets()}
+            className="
+              flex items-center gap-2
+              px-4 py-3
+              bg-blue-600 hover:bg-blue-700
+              text-white
+              rounded-full
+              shadow-lg hover:shadow-xl
+              transition-all duration-200
+            "
+            title="同步到雲端"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span className="text-sm font-medium">同步</span>
+          </button>
+
+          {/* Receipt Upload Button */}
+          <label
+            className="
+              flex items-center gap-2
+              px-4 py-3
+              bg-purple-600 hover:bg-purple-700
+              text-white
+              rounded-full
+              shadow-lg hover:shadow-xl
+              cursor-pointer
+              transition-all duration-200
+            "
+            title="上傳憑證 PDF 到雲端"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="text-sm font-medium">上傳憑證</span>
+            <input
+              type="file"
+              accept=".pdf"
+              multiple
+              onChange={handleReceiptUpload}
+              className="hidden"
+            />
+          </label>
+        </div>
       )}
     </div>
   );
