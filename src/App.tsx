@@ -646,7 +646,7 @@ function AppContent() {
 
       {/* Upload Area - At top for easy access */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4">
+        <div className="max-w-4xl mx-auto px-4 py-4 relative">
           {/* OCR Error Message */}
           {appState.ocrError && (
             <div
@@ -683,6 +683,65 @@ function AppContent() {
             progressMessage={appState.progressMessage}
           />
 
+          {/* Floating Action Buttons - Desktop only, positioned on right side */}
+          {isGoogleLoggedIn && (
+            <div className="hidden sm:flex absolute -right-20 top-1/2 -translate-y-1/2 flex-col gap-3">
+              {/* Sync Button */}
+              <button
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                className={`
+                  group
+                  flex items-center justify-center
+                  w-12 h-12
+                  text-white
+                  rounded-full
+                  shadow-lg hover:shadow-xl
+                  transition-all duration-300 ease-out
+                  ${isSyncing
+                    ? 'bg-blue-400 cursor-not-allowed'
+                    : 'bg-blue-500 hover:bg-blue-600'}
+                `}
+                title={isSyncing ? '同步中...' : '同步到雲端'}
+              >
+                <svg
+                  className={`w-5 h-5 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+
+              {/* Receipt Upload Button */}
+              <label
+                className="
+                  group
+                  flex items-center justify-center
+                  w-12 h-12
+                  bg-purple-500 hover:bg-purple-600
+                  text-white
+                  rounded-full
+                  shadow-lg hover:shadow-xl
+                  cursor-pointer
+                  transition-all duration-300 ease-out
+                "
+                title="上傳憑證 PDF"
+              >
+                <svg className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  multiple
+                  onChange={handleReceiptUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          )}
         </div>
       </div>
 
@@ -972,65 +1031,6 @@ function AppContent() {
         </div>
       )}
 
-      {/* Floating Action Buttons - Desktop only */}
-      {isGoogleLoggedIn && (
-        <div className="hidden sm:flex fixed right-6 bottom-6 z-40 flex-col items-end gap-3">
-          {/* Sync Button - FAB style */}
-          <button
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            className={`
-              group
-              flex items-center justify-center
-              w-14 h-14
-              text-white
-              rounded-full
-              shadow-lg hover:shadow-xl
-              transition-all duration-300 ease-out
-              ${isSyncing
-                ? 'bg-blue-400 cursor-not-allowed'
-                : 'bg-blue-500 hover:bg-blue-600'}
-            `}
-            title={isSyncing ? '同步中...' : '同步到雲端'}
-          >
-            <svg
-              className={`w-6 h-6 transition-transform duration-300 ${isSyncing ? 'animate-spin' : 'group-hover:rotate-180'}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-
-          {/* Receipt Upload Button - FAB style */}
-          <label
-            className="
-              group
-              flex items-center justify-center
-              w-14 h-14
-              bg-orange-500 hover:bg-orange-600
-              text-white
-              rounded-full
-              shadow-lg hover:shadow-xl
-              cursor-pointer
-              transition-all duration-300 ease-out
-            "
-            title="上傳憑證 PDF"
-          >
-            <svg className="w-6 h-6 transition-transform duration-300 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <input
-              type="file"
-              accept=".pdf"
-              multiple
-              onChange={handleReceiptUpload}
-              className="hidden"
-            />
-          </label>
-        </div>
-      )}
     </div>
   );
 }
