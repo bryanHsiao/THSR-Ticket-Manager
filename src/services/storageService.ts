@@ -37,11 +37,22 @@ class StorageService {
    * Check if a ticket with the same ticket number already exists
    *
    * @param ticketNumber - The 13-digit ticket number to check
-   * @returns Promise<boolean> - true if duplicate exists
+   * @returns Promise<boolean> - true if duplicate exists (excluding soft-deleted)
    */
   async isDuplicateTicketNumber(ticketNumber: string): Promise<boolean> {
     const existing = await db.getTicketByNumber(ticketNumber);
-    return !!existing;
+    // Only consider it a duplicate if it exists and is NOT soft-deleted
+    return !!existing && !existing.deleted;
+  }
+
+  /**
+   * Get existing ticket by ticket number (including soft-deleted)
+   *
+   * @param ticketNumber - The 13-digit ticket number to check
+   * @returns Promise<TicketRecord | undefined> - The existing ticket or undefined
+   */
+  async getTicketByNumber(ticketNumber: string): Promise<TicketRecord | undefined> {
+    return await db.getTicketByNumber(ticketNumber);
   }
 
   /**
@@ -63,9 +74,10 @@ class StorageService {
     }
 
     // Check for duplicate ticket number (only if ticket number is provided)
+    // Only block if the existing ticket is NOT soft-deleted
     if (ticket.ticketNumber) {
       const existingByNumber = await db.getTicketByNumber(ticket.ticketNumber);
-      if (existingByNumber) {
+      if (existingByNumber && !existingByNumber.deleted) {
         throw new Error(`票號 ${ticket.ticketNumber} 已存在，無法重複新增。`);
       }
     }
@@ -304,16 +316,6 @@ class StorageService {
    */
   async getTicketById(id: string): Promise<TicketRecord | undefined> {
     return db.getTicketById(id);
-  }
-
-  /**
-   * Get a ticket by its ticket number
-   *
-   * @param ticketNumber - The 13-digit ticket number
-   * @returns Promise<TicketRecord | undefined> - The ticket or undefined if not found
-   */
-  async getTicketByNumber(ticketNumber: string): Promise<TicketRecord | undefined> {
-    return db.getTicketByNumber(ticketNumber);
   }
 
   /**

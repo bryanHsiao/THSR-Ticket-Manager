@@ -524,7 +524,9 @@ class SyncQueueService {
       mergedMap.set(ticket.id, { ...ticket, imageUrl, syncStatus: 'synced' });
     }
 
-    // Merge local tickets using LWW
+    // Merge local tickets using LWW (Last-Write-Wins)
+    // This handles soft delete correctly: if local has deleted: true with newer updatedAt,
+    // it will replace the cloud version
     for (const localTicket of localTickets) {
       const existing = mergedMap.get(localTicket.id);
 
@@ -532,14 +534,32 @@ class SyncQueueService {
         // New local ticket, add it
         mergedMap.set(localTicket.id, localTicket);
       } else {
-        // Compare timestamps, use newer version but preserve local imageUrl
-        if (new Date(localTicket.updatedAt) > new Date(existing.updatedAt)) {
+        const localTime = new Date(localTicket.updatedAt).getTime();
+        const existingTime = new Date(existing.updatedAt).getTime();
+
+        // Compare timestamps, use newer version
+        if (localTime > existingTime) {
+          // Local is newer - use local version (including soft delete status)
+          // Preserve local imageUrl since cloud doesn't store images
           mergedMap.set(localTicket.id, localTicket);
-        } else {
-          // Keep existing but preserve local imageUrl if it has Base64 data
+        } else if (localTime < existingTime) {
+          // Cloud is newer - keep cloud but preserve local imageUrl if it has Base64 data
           if (localTicket.imageUrl && localTicket.imageUrl.startsWith('data:')) {
             mergedMap.set(localTicket.id, { ...existing, imageUrl: localTicket.imageUrl });
           }
+          // If cloud has deleted: true, local will now have it too after this merge
+        } else {
+          // Same timestamp - prefer the deleted version to prevent resurrection
+          if (existing.deleted && !localTicket.deleted) {
+            // Cloud says deleted, keep it deleted
+            if (localTicket.imageUrl && localTicket.imageUrl.startsWith('data:')) {
+              mergedMap.set(localTicket.id, { ...existing, imageUrl: localTicket.imageUrl });
+            }
+          } else if (!existing.deleted && localTicket.deleted) {
+            // Local says deleted, use local
+            mergedMap.set(localTicket.id, localTicket);
+          }
+          // If both same deleted status, keep existing (cloud)
         }
       }
     }

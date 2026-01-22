@@ -160,6 +160,11 @@ export function filterTickets(
   const { month, direction, searchText, noReceipt } = filters;
 
   return tickets.filter((ticket) => {
+    // Always exclude soft-deleted tickets from display
+    if (ticket.deleted) {
+      return false;
+    }
+
     // Filter by month (YYYY-MM format)
     if (month) {
       const ticketMonth = ticket.travelDate.substring(0, 7); // Extract YYYY-MM from YYYY-MM-DD

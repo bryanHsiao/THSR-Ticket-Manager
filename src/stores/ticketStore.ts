@@ -230,35 +230,49 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
     set({ error: null });
 
     try {
-      // Get ticket before deleting to access driveImageId
+      // Get ticket to soft delete
       const ticket = get().tickets.find((t) => t.id === id);
+      if (!ticket) {
+        throw new Error('Ticket not found');
+      }
 
-      await storageService.deleteTicket(id);
+      // Soft delete: mark as deleted, clear local image, keep record for sync
+      const deletedTicket: TicketRecord = {
+        ...ticket,
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        imageUrl: '', // Clear local base64 image
+        syncStatus: 'pending',
+      };
+
+      // Update in storage
+      await storageService.updateTicket(deletedTicket);
 
       // Update local state
       set((state) => ({
-        tickets: state.tickets.filter((t) => t.id !== id),
+        tickets: state.tickets.map((t) => t.id === id ? deletedTicket : t),
       }));
 
       // Delete image from Google Drive in background (if exists)
-      if (ticket?.driveImageId && googleAuthService.isAuthorized()) {
+      if (ticket.driveImageId && googleAuthService.isAuthorized()) {
         googleDriveService.deleteImage(ticket.driveImageId)
           .then(() => console.log(`[Delete] Removed image from Drive: ${ticket.driveImageId}`))
           .catch((err) => console.warn('[Delete] Failed to remove image from Drive:', err));
       }
 
       // Delete receipt from Google Drive in background (if exists)
-      if (ticket?.driveReceiptId && googleAuthService.isAuthorized()) {
+      if (ticket.driveReceiptId && googleAuthService.isAuthorized()) {
         googleDriveService.deleteReceipt(ticket.driveReceiptId)
           .then(() => console.log(`[Delete] Removed receipt from Drive: ${ticket.driveReceiptId}`))
           .catch((err) => console.warn('[Delete] Failed to remove receipt from Drive:', err));
       }
 
-      // Process sync queue only (don't do full merge which would restore deleted items)
+      // Sync the soft delete to cloud
       if (googleAuthService.isAuthorized()) {
-        storageService.processSyncQueueOnly()
+        storageService.syncToCloud()
           .catch((syncError) => {
-            console.warn('Sync queue processing after delete failed:', syncError);
+            console.warn('Sync after soft delete failed:', syncError);
           });
       }
     } catch (error) {

@@ -27,6 +27,7 @@ import { ocrManager } from './services/ocrManager';
 import { googleAuthService } from './services/googleAuthService';
 import { googleDriveService } from './services/googleDriveService';
 import { llmConfigService } from './services/llmConfigService';
+import { storageService } from './services/storageService';
 import type { OCREngineType, OCRResultWithMeta } from './types/ocr';
 import { blobToBase64, compressImage } from './utils/imageUtils';
 import type { TicketRecord } from './types/ticket';
@@ -60,6 +61,8 @@ interface AppState {
   ocrFallbackReason: string | null;
   /** Error message from form submission (shown inside modal) */
   submitError: string | null;
+  /** Existing soft-deleted ticket to restore (for pre-filling purpose) */
+  existingDeletedTicket: TicketRecord | null;
 }
 
 /**
@@ -78,6 +81,7 @@ const initialAppState: AppState = {
   ocrFallbackUsed: false,
   ocrFallbackReason: null,
   submitError: null,
+  existingDeletedTicket: null,
 };
 
 /**
@@ -309,6 +313,16 @@ function AppContent() {
       // Clear any previous ticketStore error before showing modal
       clearError();
 
+      // Check if there's a soft-deleted ticket with the same number
+      let existingDeletedTicket: TicketRecord | null = null;
+      if (result.ticketNumber) {
+        const existing = await storageService.getTicketByNumber(result.ticketNumber);
+        if (existing?.deleted) {
+          existingDeletedTicket = existing;
+          console.log(`[OCR] Found soft-deleted ticket to restore: ${result.ticketNumber}`);
+        }
+      }
+
       // Show OCR preview modal for user confirmation
       setAppState((prev) => ({
         ...prev,
@@ -321,6 +335,7 @@ function AppContent() {
         ocrFallbackUsed: result.fallbackUsed,
         ocrFallbackReason: result.fallbackReason || null,
         submitError: null, // Clear any previous submit error
+        existingDeletedTicket, // Store deleted ticket for restoring with purpose
       }));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'OCR辨識失敗';
@@ -339,6 +354,7 @@ function AppContent() {
   /**
    * Handle OCR preview confirmation
    * Saves ticket with Base64 image locally, then uploads image to Drive in background
+   * If a soft-deleted ticket with the same number exists, restore it instead
    */
   const handleOCRConfirm = useCallback(async (formData: TicketFormData) => {
     const file = appState.imageFile;
@@ -356,21 +372,44 @@ function AppContent() {
       // Convert compressed image to Base64 for local storage
       const imageUrl = await blobToBase64(compressedFile);
 
-      // Create ticket record
       const isLoggedIn = googleAuthService.isAuthorized();
       const now = new Date().toISOString();
-      const ticketId = generateUUID();
-      const ticket: TicketRecord = {
-        id: ticketId,
-        ...formData,
-        imageUrl,
-        createdAt: now,
-        updatedAt: now,
-        syncStatus: isLoggedIn ? 'pending' : 'local',
-      };
 
-      // Save ticket locally first (fast)
-      await addTicket(ticket);
+      // Check if there's a soft-deleted ticket with the same number
+      const existingTicket = await storageService.getTicketByNumber(formData.ticketNumber);
+
+      let ticket: TicketRecord;
+
+      if (existingTicket && existingTicket.deleted) {
+        // Restore the soft-deleted ticket with new data
+        ticket = {
+          ...existingTicket,
+          ...formData,
+          imageUrl,
+          deleted: false,
+          deletedAt: undefined,
+          driveImageId: undefined, // Clear old Drive IDs since we'll upload new image
+          driveReceiptId: undefined,
+          updatedAt: now,
+          syncStatus: isLoggedIn ? 'pending' : 'local',
+        };
+        // Update existing ticket
+        await updateTicket(ticket);
+        console.log(`[Restore] Restored soft-deleted ticket: ${ticket.ticketNumber}`);
+      } else {
+        // Create new ticket record
+        const ticketId = generateUUID();
+        ticket = {
+          id: ticketId,
+          ...formData,
+          imageUrl,
+          createdAt: now,
+          updatedAt: now,
+          syncStatus: isLoggedIn ? 'pending' : 'local',
+        };
+        // Save new ticket locally
+        await addTicket(ticket);
+      }
 
       // Close modal and reset state
       setAppState((prev) => ({
@@ -379,6 +418,7 @@ function AppContent() {
         ocrResult: null,
         imageFile: null,
         submitError: null,
+        existingDeletedTicket: null,
       }));
 
       // Upload image to Google Drive in background (don't block UI)
@@ -425,6 +465,7 @@ function AppContent() {
       isOCRPreviewOpen: false,
       ocrResult: null,
       imageFile: null,
+      existingDeletedTicket: null,
     }));
   }, []);
 
@@ -823,6 +864,18 @@ function AppContent() {
                 </div>
               )}
 
+              {/* Restore notice - show if restoring a deleted ticket */}
+              {appState.existingDeletedTicket && (
+                <div className="mx-6 mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300 text-sm">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>此票號曾被刪除，將復原並更新資料</span>
+                  </div>
+                </div>
+              )}
+
               {/* Modal Content with Form */}
               <div className="p-4 sm:p-6">
                 <TicketForm
@@ -833,6 +886,8 @@ function AppContent() {
                     direction: appState.ocrResult.direction || 'northbound',
                     departure: appState.ocrResult.departure || '',
                     destination: appState.ocrResult.destination || '',
+                    // Pre-fill purpose from deleted ticket if available
+                    purpose: appState.existingDeletedTicket?.purpose || '',
                   }}
                   isEditMode={false}
                   onSubmit={handleOCRConfirm}
