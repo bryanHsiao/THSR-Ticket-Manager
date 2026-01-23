@@ -20,8 +20,12 @@ import { useTicketStore } from '../stores/ticketStore';
 import { useFilterStore, filterTickets } from '../stores/filterStore';
 import { TicketCard } from './TicketCard';
 import { FilterBar } from './FilterBar';
+import { TicketGroupList } from './TicketGroupList';
+import { TicketTabList } from './TicketTabList';
+import { TicketTreeList } from './TicketTreeList';
 import { googleDriveService } from '../services/googleDriveService';
 import { googleAuthService } from '../services/googleAuthService';
+import { settingsService, type GroupingMode } from '../services/settingsService';
 import type { TicketRecord } from '../types/ticket';
 
 /**
@@ -467,6 +471,8 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null);
   // State for image loading from Drive
   const [isLoadingImage, setIsLoadingImage] = useState(false);
+  // State for grouping mode
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>(() => settingsService.getGroupingMode());
 
   // Get ticket store state and actions
   const storeTickets = useTicketStore((state) => state.tickets);
@@ -529,6 +535,14 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
       loadTickets();
     }
   }, [propTickets, loadTickets]);
+
+  // Subscribe to settings changes
+  useEffect(() => {
+    const unsubscribe = settingsService.subscribe((settings) => {
+      setGroupingMode(settings.groupingMode);
+    });
+    return () => unsubscribe();
+  }, []);
 
 
   /**
@@ -615,6 +629,77 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     }
   }, [onDownloadReceipt]);
 
+  /**
+   * Render content based on grouping mode
+   */
+  const renderContent = useCallback(() => {
+    // For grouped views, wrap handlers to work with ticket object
+    const handleGroupedEdit = (id: string) => onEdit(id);
+    const handleGroupedDelete = (id: string) => {
+      const ticket = sortedTickets.find(t => t.id === id);
+      if (ticket) {
+        handleDeleteClick(ticket);
+      }
+    };
+
+    switch (groupingMode) {
+      case 'collapsed':
+        return (
+          <TicketGroupList
+            tickets={sortedTickets}
+            onEdit={handleGroupedEdit}
+            onDelete={handleGroupedDelete}
+            onViewImage={handleViewImage}
+            onDownloadReceipt={onDownloadReceipt ? handleDownloadReceiptClick : undefined}
+          />
+        );
+      case 'tabs':
+        return (
+          <TicketTabList
+            tickets={sortedTickets}
+            onEdit={handleGroupedEdit}
+            onDelete={handleGroupedDelete}
+            onViewImage={handleViewImage}
+            onDownloadReceipt={onDownloadReceipt ? handleDownloadReceiptClick : undefined}
+          />
+        );
+      case 'tree':
+        return (
+          <TicketTreeList
+            tickets={sortedTickets}
+            onEdit={handleGroupedEdit}
+            onDelete={handleGroupedDelete}
+            onViewImage={handleViewImage}
+            onDownloadReceipt={onDownloadReceipt ? handleDownloadReceiptClick : undefined}
+          />
+        );
+      case 'flat':
+      default:
+        return (
+          <div
+            className="
+              grid
+              grid-cols-1
+              sm:grid-cols-2
+              lg:grid-cols-3
+              gap-4 sm:gap-5 lg:gap-6
+            "
+          >
+            {sortedTickets.map((ticket) => (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                onEdit={() => onEdit(ticket.id)}
+                onDelete={() => handleDeleteClick(ticket)}
+                onViewImage={(ticket.imageUrl || ticket.driveImageId) ? () => handleViewImage(ticket) : undefined}
+                onDownloadReceipt={onDownloadReceipt ? () => handleDownloadReceiptClick(ticket) : undefined}
+              />
+            ))}
+          </div>
+        );
+    }
+  }, [groupingMode, sortedTickets, onEdit, handleDeleteClick, handleViewImage, onDownloadReceipt, handleDownloadReceiptClick]);
+
   // Render loading state
   if (isLoading && tickets.length === 0) {
     return <LoadingState />;
@@ -681,27 +766,8 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
           </div>
         </div>
 
-        {/* Ticket grid - responsive: 1 col mobile, 2 cols tablet, 3 cols desktop */}
-        <div
-          className="
-            grid
-            grid-cols-1
-            sm:grid-cols-2
-            lg:grid-cols-3
-            gap-4 sm:gap-5 lg:gap-6
-          "
-        >
-          {sortedTickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              onEdit={() => onEdit(ticket.id)}
-              onDelete={() => handleDeleteClick(ticket)}
-              onViewImage={(ticket.imageUrl || ticket.driveImageId) ? () => handleViewImage(ticket) : undefined}
-              onDownloadReceipt={onDownloadReceipt ? () => handleDownloadReceiptClick(ticket) : undefined}
-            />
-          ))}
-        </div>
+        {/* Ticket content - render based on grouping mode */}
+        {renderContent()}
       </div>
 
       {/* Delete Confirmation Dialog */}

@@ -11,7 +11,7 @@
  * NFR: Responsive design, Traditional Chinese interface
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { GOOGLE_CLIENT_ID, isGoogleConfigured } from './config/google';
 import { useUserStore, initializeUserStore } from './stores/userStore';
@@ -27,6 +27,7 @@ import { ocrManager } from './services/ocrManager';
 import { googleAuthService } from './services/googleAuthService';
 import { googleDriveService } from './services/googleDriveService';
 import { llmConfigService } from './services/llmConfigService';
+import { settingsService } from './services/settingsService';
 import { storageService } from './services/storageService';
 import type { OCREngineType, OCRResultWithMeta } from './types/ocr';
 import { blobToBase64, compressImage } from './utils/imageUtils';
@@ -98,6 +99,28 @@ function generateUUID(): string {
 /**
  * Main App content wrapped with initialization logic
  */
+/**
+ * Accepted file formats for ticket images
+ * Requirements: 1.1 - Accept JPG, PNG, HEIC formats
+ */
+const ACCEPTED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/heic', 'image/heif'];
+
+/**
+ * Validates if a file has an accepted image format
+ * @param file - File to validate
+ * @returns true if file format is valid
+ */
+function isValidFileType(file: File): boolean {
+  // Check MIME type
+  if (ACCEPTED_FILE_TYPES.includes(file.type.toLowerCase())) {
+    return true;
+  }
+
+  // Fallback: Check file extension for HEIC files (MIME type might not be set correctly)
+  const extension = file.name.toLowerCase().split('.').pop();
+  return extension === 'heic' || extension === 'heif';
+}
+
 function AppContent() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [appState, setAppState] = useState<AppState>(initialAppState);
@@ -110,6 +133,9 @@ function AppContent() {
   // Manual sync state
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncToast, setSyncToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+  // Global drag-and-drop state
+  const [isGlobalDragOver, setIsGlobalDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
 
   // Ticket store actions
   const loadTickets = useTicketStore((state) => state.loadTickets);
@@ -183,6 +209,14 @@ function AppContent() {
         console.log('LLM config initialized');
       } catch (error) {
         console.warn('Failed to initialize LLM config:', error);
+      }
+
+      // Initialize settings service from localStorage
+      try {
+        await settingsService.initialize();
+        console.log('Settings service initialized');
+      } catch (error) {
+        console.warn('Failed to initialize settings:', error);
       }
 
       // Initialize user store from localStorage (restore login state)
@@ -659,6 +693,64 @@ function AppContent() {
     }
   }, [isSyncing, syncTickets]);
 
+  /**
+   * Global drag enter handler
+   * Uses counter to handle nested elements
+   */
+  const handleGlobalDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current++;
+
+    // Only show overlay if dragging files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsGlobalDragOver(true);
+    }
+  }, []);
+
+  /**
+   * Global drag leave handler
+   */
+  const handleGlobalDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current--;
+
+    if (dragCounterRef.current === 0) {
+      setIsGlobalDragOver(false);
+    }
+  }, []);
+
+  /**
+   * Global drag over handler
+   */
+  const handleGlobalDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  /**
+   * Global drop handler
+   * Validates file type and triggers OCR
+   */
+  const handleGlobalDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsGlobalDragOver(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && isValidFileType(file)) {
+      handleImageCapture(file);
+    } else if (file) {
+      // Show error for invalid file type
+      setAppState((prev) => ({
+        ...prev,
+        ocrError: '不支援的檔案格式。請上傳 JPG、PNG 或 HEIC 格式的圖片。',
+      }));
+    }
+  }, [handleImageCapture]);
+
   // Show loading state during initialization
   if (!isInitialized) {
     return (
@@ -674,7 +766,42 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900">
+    <div
+      className="min-h-screen flex flex-col bg-gray-100 dark:bg-gray-900 relative"
+      onDragEnter={handleGlobalDragEnter}
+      onDragLeave={handleGlobalDragLeave}
+      onDragOver={handleGlobalDragOver}
+      onDrop={handleGlobalDrop}
+    >
+      {/* Global Drag Overlay */}
+      {isGlobalDragOver && (
+        <div className="fixed inset-0 z-[100] bg-orange-500/20 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 flex flex-col items-center">
+            <div className="w-20 h-20 rounded-full bg-orange-100 dark:bg-orange-800 flex items-center justify-center mb-4">
+              <svg
+                className="w-10 h-10 text-orange-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <p className="text-xl font-semibold text-gray-800 dark:text-gray-100">
+              放開以上傳圖片
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              支援 JPG、PNG、HEIC 格式
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header Area - Integrated with GoogleAuthButton and sync status */}
       <Header
         authButton={<GoogleAuthButton />}
@@ -687,7 +814,7 @@ function AppContent() {
 
       {/* Upload Area - At top for easy access */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-4 relative">
+        <div className="max-w-6xl mx-auto px-4 py-4 relative">
           {/* OCR Error Message */}
           {appState.ocrError && (
             <div
@@ -729,7 +856,7 @@ function AppContent() {
 
       {/* Main Content - Ticket List */}
       <main className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="max-w-6xl mx-auto px-4 py-6">
           <TicketList
             onEdit={handleEdit}
             onDelete={handleDelete}

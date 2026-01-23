@@ -184,10 +184,13 @@ export function FilterBar() {
         </div>
         <input
           id="filter-search"
-          type="text"
+          type="search"
+          name="ticket-search"
           value={searchText || ''}
           onChange={handleSearchChange}
           placeholder="搜尋票號..."
+          autoComplete="off"
+          data-form-type="other"
           className="
             w-full
             pl-8 pr-3 py-1.5

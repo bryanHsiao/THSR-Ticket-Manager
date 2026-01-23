@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { llmConfigService } from '../services/llmConfigService';
+import { settingsService, type GroupingMode } from '../services/settingsService';
 
 interface ApiKeySettingsProps {
   isOpen: boolean;
@@ -20,8 +21,9 @@ export function ApiKeySettings({ isOpen, onClose, onSave }: ApiKeySettingsProps)
   const [showKey, setShowKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [groupingMode, setGroupingMode] = useState<GroupingMode>('flat');
 
-  // Load existing key on mount
+  // Load existing key and settings on mount
   useEffect(() => {
     if (isOpen) {
       const existingKey = llmConfigService.getApiKey();
@@ -32,6 +34,8 @@ export function ApiKeySettings({ isOpen, onClose, onSave }: ApiKeySettingsProps)
         setApiKey('');
       }
       setMessage(null);
+      // Load grouping mode
+      setGroupingMode(settingsService.getGroupingMode());
     }
   }, [isOpen]);
 
@@ -77,6 +81,11 @@ export function ApiKeySettings({ isOpen, onClose, onSave }: ApiKeySettingsProps)
     setMessage({ type: 'success', text: 'API Key 已清除' });
   };
 
+  const handleGroupingModeChange = (mode: GroupingMode) => {
+    setGroupingMode(mode);
+    settingsService.setGroupingMode(mode);
+  };
+
   const hasExistingKey = llmConfigService.isConfigured();
 
   return (
@@ -92,7 +101,7 @@ export function ApiKeySettings({ isOpen, onClose, onSave }: ApiKeySettingsProps)
           {/* Header */}
           <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              API 設定
+              應用設定
             </h2>
             <button
               onClick={onClose}
@@ -121,9 +130,12 @@ export function ApiKeySettings({ isOpen, onClose, onSave }: ApiKeySettingsProps)
               <div className="relative">
                 <input
                   type={showKey ? 'text' : 'password'}
+                  name="openai-api-key"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="sk-..."
+                  autoComplete="new-password"
+                  data-form-type="other"
                   className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
                 <button
@@ -172,6 +184,26 @@ export function ApiKeySettings({ isOpen, onClose, onSave }: ApiKeySettingsProps)
                 <li>複製產生的 Key 並貼到上方</li>
               </ol>
             </details>
+
+            {/* Grouping Mode Setting */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                票券歸納方式
+              </label>
+              <select
+                value={groupingMode}
+                onChange={(e) => handleGroupingModeChange(e.target.value as GroupingMode)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                <option value="flat">平面列表</option>
+                <option value="collapsed">月份分組（可展開）</option>
+                <option value="tabs">月份頁籤</option>
+                <option value="tree">年月樹狀結構</option>
+              </select>
+              <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+                ✓ 設定即時生效
+              </p>
+            </div>
           </div>
 
           {/* Footer */}
