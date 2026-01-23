@@ -518,6 +518,11 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
     });
   }, [filteredTickets]);
 
+  // Total active tickets count (excluding soft-deleted)
+  const totalActiveTickets = useMemo(() => {
+    return tickets.filter(t => !t.deleted).length;
+  }, [tickets]);
+
   // Load tickets on component mount (only if using store)
   useEffect(() => {
     if (!propTickets) {
@@ -636,7 +641,7 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
                 筆車票
                 <span className="text-gray-500 dark:text-gray-500">
                   {' '}
-                  / {tickets.length}
+                  / {totalActiveTickets}
                 </span>
               </p>
             </div>
@@ -663,10 +668,10 @@ export function TicketList({ tickets: propTickets, onEdit, onDelete, isLoading: 
                 {sortedTickets.length}
               </span>{' '}
               筆車票
-              {hasFilters && tickets.length !== sortedTickets.length && (
+              {hasFilters && totalActiveTickets !== sortedTickets.length && (
                 <span className="text-gray-500 dark:text-gray-500">
                   {' '}
-                  / {tickets.length}
+                  / {totalActiveTickets}
                 </span>
               )}
             </p>
