@@ -166,7 +166,10 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
   const [receiptPath, setReceiptPath] = useState<string | null>(null);
 
   useEffect(() => {
-    // Only check if we have all required fields
+    if (ticket.driveReceiptId) {
+      setReceiptPath(null);
+      return;
+    }
     if (ticket.travelDate && ticket.departure && ticket.destination && ticket.ticketNumber) {
       const path = getReceiptFilePath({
         travelDate: ticket.travelDate,
@@ -182,7 +185,7 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
     } else {
       setReceiptPath(null);
     }
-  }, [ticket.travelDate, ticket.departure, ticket.destination, ticket.ticketNumber, ticket.bookingCode]);
+  }, [ticket.driveReceiptId, ticket.travelDate, ticket.departure, ticket.destination, ticket.ticketNumber, ticket.bookingCode]);
 
   // Open receipt in new tab
   const handleViewReceipt = () => {
