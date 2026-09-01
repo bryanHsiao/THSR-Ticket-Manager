@@ -72,23 +72,23 @@ npm run build
 
    Playwright 的瀏覽器不會跟 `npm install` 一起裝，`npm run receipt` 會用到。
 
-3. **建立 `.env` 檔案**（專案根目錄）
+3. **建立 `.env` 檔案**
 
-   ```
-   VITE_GOOGLE_CLIENT_ID=<你的 Google OAuth Client ID>
-   ```
-
-   Client ID 從 [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials 找回舊的，或依照下方「Google Cloud Console 設定指南」建立新的。建議另外存進密碼管理器。
-
-4. **更新憑證下載指令的專案路徑**
-
-   ⚠️ [src/App.tsx](src/App.tsx) 裡 `handleDownloadReceipt` 有一行硬寫的專案路徑，新機器路徑不同要改：
-
-   ```ts
-   const projectDir = 'C:\\Users\\siaob\\code\\20260112-claude-code-spec-workflow';
+   ```bash
+   cp .env.example .env
    ```
 
-5. **啟動 dev server 驗證**
+   打開 `.env`，填入 **這台機器上專案的絕對路徑**：
+
+   ```
+   VITE_PROJECT_DIR=C:\Users\yourname\code\THSR-Ticket-Manager
+   ```
+
+   這個變數會被注入到「下載憑證」複製的指令裡，貼上就自動 `cd` 到正確目錄。留空的話複製的指令會省略 `cd` 那一行。
+
+   > Google OAuth Client ID 目前寫死在 `vite.config.ts`（公開資訊，不算 secret），不需要放進 `.env`。
+
+4. **啟動 dev server 驗證**
 
    ```bash
    npm run dev
@@ -96,13 +96,17 @@ npm run build
 
    到 `http://localhost:5173` 檢查能不能登入 Google、看到票券清單。
 
-6. **測試憑證下載腳本**
+5. **測試憑證下載腳本**
 
    在網頁點下載憑證按鈕 → 複製指令 → 開 terminal 貼上執行 → 檢查 `downloads/高鐵憑證/` 有沒有 PDF。
 
-7. **（選）設定 GitHub Pages 自動部署**
+6. **（選）設定 GitHub Pages 自動部署**
 
-   若 fork 到自己 repo 才需要。到 GitHub → Settings → Pages 選 GitHub Actions 為來源，push 到 `main` 後看 Actions 頁確認 `Deploy to GitHub Pages` workflow 有跑起來。
+   若 fork 到自己 repo 才需要：
+
+   - GitHub → Settings → Pages，來源選 GitHub Actions
+   - GitHub → Settings → Secrets and variables → Actions，新增一個 secret 叫 `VITE_PROJECT_DIR`，值填入這個部署要「代表」的機器上專案路徑（就是你平常最常用來下載憑證的那台機器的 `VITE_PROJECT_DIR`）
+   - push 到 `main` 後看 Actions 頁確認 `Deploy to GitHub Pages` workflow 有跑起來
 
 #### 需要另外備份的機密
 

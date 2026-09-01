@@ -33,6 +33,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_PROJECT_DIR: ${{ secrets.VITE_PROJECT_DIR }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

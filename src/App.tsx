@@ -574,11 +574,13 @@ function AppContent() {
    * Copies the command to clipboard for user to run in terminal
    */
   const handleDownloadReceipt = useCallback((ticket: TicketRecord) => {
-    const projectDir = 'C:\\Users\\siaob\\code\\20260112-claude-code-spec-workflow';
+    const projectDir = import.meta.env.VITE_PROJECT_DIR;
     const args = ticket.bookingCode
       ? `--date=${ticket.travelDate} --from=${ticket.departure} --to=${ticket.destination} --booking=${ticket.bookingCode}`
       : `--date=${ticket.travelDate} --from=${ticket.departure} --to=${ticket.destination} --ticket=${ticket.ticketNumber}`;
-    const cmd = `cd ${projectDir}\nnode scripts/download-receipt.mjs ${args}`;
+    const cmd = projectDir
+      ? `cd ${projectDir}\nnode scripts/download-receipt.mjs ${args}`
+      : `node scripts/download-receipt.mjs ${args}`;
 
     navigator.clipboard.writeText(cmd).then(() => {
       alert(`指令已複製！\n\n開啟終端機（cmd / PowerShell / Git Bash 皆可）貼上執行：\n\n${cmd}`);
