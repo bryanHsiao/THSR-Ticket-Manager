@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>服務條款 - THSR Ticket Manager</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --fg: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #ea580c;
+      --code-bg: #f3f4f6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111827;
+        --fg: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #374151;
+        --accent: #fb923c;
+        --code-bg: #1f2937;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1.75rem; margin-top: 0; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; color: var(--accent); }
+    p, li { font-size: 1rem; }
+    ul, ol { padding-left: 1.5rem; }
+    a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>服務條款 / Terms of Service</h1>
+    <p class="meta">最後更新日期：2026-09-01</p>
+
+    <p>歡迎使用 THSR Ticket Manager（以下簡稱「本應用程式」）。使用本應用程式即表示您同意以下條款。</p>
+
+    <hr />
+
+    <h2>1. 服務性質</h2>
+    <p>本應用程式為<strong>個人開發、開源、免費、非營利</strong>的高鐵車票管理工具，程式碼公開於：<br/>
+    <a href="https://github.com/bryanHsiao/THSR-Ticket-Manager" target="_blank" rel="noopener">https://github.com/bryanHsiao/THSR-Ticket-Manager</a></p>
+    <p>授權條款：MIT License。</p>
+
+    <h2>2. 使用者責任</h2>
+    <ul>
+      <li>您需自備 <a href="https://platform.openai.com/" target="_blank" rel="noopener">OpenAI</a> API Key，OCR 使用產生的費用由您自行承擔。</li>
+      <li>您需自備 Google 帳號以啟用 Google Drive 同步。</li>
+      <li>上傳的車票照片與個人資料由您自行負責，請勿上傳非屬於您的資料。</li>
+    </ul>
+
+    <h2>3. 免責聲明</h2>
+    <p>本應用程式依「現狀」提供，作者不對其功能、準確性、可用性、資料完整性作任何明示或默示的擔保。使用本應用程式產生的任何直接或間接損失，包括但不限於資料遺失、OCR 辨識錯誤、報表金額誤差、Google Drive 同步異常，皆由使用者自行承擔。</p>
+    <p>本應用程式<strong>與台灣高鐵公司無任何附屬或授權關係</strong>。</p>
+
+    <h2>4. 服務變更與終止</h2>
+    <p>作者保留隨時修改、暫停或終止本應用程式的權利，恕不另行通知。</p>
+
+    <h2>5. 條款變更</h2>
+    <p>本條款可能隨時更新，最新版本請見本頁面。持續使用本應用程式即表示您接受變更後的條款。</p>
+
+    <h2>6. 聯絡方式</h2>
+    <p>如有服務條款相關問題，請於 GitHub 開 issue：<br/>
+    <a href="https://github.com/bryanHsiao/THSR-Ticket-Manager/issues" target="_blank" rel="noopener">https://github.com/bryanHsiao/THSR-Ticket-Manager/issues</a></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>隱私權政策 - THSR Ticket Manager</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #ffffff;
+      --fg: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #ea580c;
+      --code-bg: #f3f4f6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111827;
+        --fg: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #374151;
+        --accent: #fb923c;
+        --code-bg: #1f2937;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      line-height: 1.7;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1.75rem; margin-top: 0; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; margin-top: 2rem; color: var(--accent); }
+    p, li { font-size: 1rem; }
+    ul, ol { padding-left: 1.5rem; }
+    a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.95rem; }
+    th, td { border: 1px solid var(--border); padding: 0.5rem 0.75rem; text-align: left; }
+    th { background: var(--code-bg); }
+    code { background: var(--code-bg); padding: 0.15rem 0.4rem; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+    .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>隱私權政策 / Privacy Policy</h1>
+    <p class="meta">最後更新日期：2026-09-01</p>
+
+    <p>THSR Ticket Manager（以下簡稱「本應用程式」）是一個個人使用的高鐵車票管理工具。本文件說明本應用程式如何處理您的資料。</p>
+
+    <hr />
+
+    <h2>1. 我們收集哪些資料</h2>
+    <p>本應用程式<strong>不會將您的資料傳送到本應用程式擁有或維護的伺服器</strong>。所有處理均在您的瀏覽器或您授權的第三方服務中進行。</p>
+    <p>以下資料會在您使用時被處理：</p>
+    <ul>
+      <li><strong>車票照片與 OCR 結果</strong>：您上傳的高鐵車票影像、辨識後的票號、日期、起訖站、金額等欄位。</li>
+      <li><strong>Google 帳號基本資訊</strong>：您登入 Google 時提供的 email 與名稱（僅用於顯示與 Drive 同步識別）。</li>
+      <li><strong>您設定的 OpenAI API Key</strong>：僅儲存在瀏覽器 localStorage，僅用於呼叫 OpenAI API 進行 OCR。</li>
+    </ul>
+
+    <h2>2. 資料儲存位置</h2>
+    <ul>
+      <li><strong>您的瀏覽器</strong>：票券紀錄、設定值儲存在 IndexedDB / localStorage。</li>
+      <li><strong>您的 Google Drive</strong>：啟用同步後，車票照片與 JSON 資料會存到您 Google Drive 的「應用程式資料夾」內，僅本應用程式能存取。</li>
+    </ul>
+    <p>本應用程式使用 <a href="https://developers.google.com/identity/protocols/oauth2/scopes#drive" target="_blank" rel="noopener"><code>drive.file</code></a> OAuth scope，<strong>僅能存取由本應用程式自身建立的檔案</strong>，無法讀取或修改您 Drive 上的其他任何資料。</p>
+
+    <h2>3. 使用的第三方服務</h2>
+    <table>
+      <thead>
+        <tr><th>服務</th><th>用途</th><th>資料傳送內容</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Google OAuth 2.0</td><td>登入驗證</td><td>Google 帳號基本資訊</td></tr>
+        <tr><td>Google Drive API</td><td>車票資料同步</td><td>您上傳的車票影像與 JSON 檔</td></tr>
+        <tr><td>OpenAI API (GPT-4o)</td><td>車票 OCR 辨識</td><td>您上傳的車票影像（僅在辨識當下）</td></tr>
+      </tbody>
+    </table>
+    <p>各服務的隱私權政策：</p>
+    <ul>
+      <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a></li>
+      <li><a href="https://openai.com/privacy" target="_blank" rel="noopener">OpenAI Privacy Policy</a></li>
+    </ul>
+
+    <h2>4. 資料保留與刪除</h2>
+    <ul>
+      <li>您可以在應用程式內隨時刪除票券紀錄。</li>
+      <li>要完全移除 Google Drive 上的資料：可到 <a href="https://drive.google.com/drive/settings" target="_blank" rel="noopener">Google Drive 設定 → 管理應用程式</a> 撤銷本應用程式的存取權，並刪除應用程式資料夾。</li>
+      <li>要撤銷 OAuth 存取權：到 <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">Google 帳戶 → 第三方應用程式與服務</a>。</li>
+    </ul>
+
+    <h2>5. Cookie 與追蹤</h2>
+    <p>本應用程式<strong>不使用 cookie，也不進行任何形式的使用者追蹤、廣告或分析</strong>。</p>
+
+    <h2>6. 聯絡方式</h2>
+    <p>本應用程式為個人專案，如有隱私權相關問題請於 GitHub 開 issue：<br/>
+    <a href="https://github.com/bryanHsiao/THSR-Ticket-Manager/issues" target="_blank" rel="noopener">https://github.com/bryanHsiao/THSR-Ticket-Manager/issues</a></p>
+  </main>
+</body>
+</html>
