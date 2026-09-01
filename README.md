@@ -32,6 +32,88 @@ npm run dev
 npm run build
 ```
 
+## 在新機器上重建環境
+
+依用途分兩種情境。
+
+### 情境 A：只用網頁版
+
+換新瀏覽器、新手機、平板就是這種。到 [線上版本](https://bryanHsiao.github.io/THSR-Ticket-Manager/) 做以下事：
+
+1. 登入 Google 帳號 → 自動從 Drive 同步票券資料回來
+2. 點右上角齒輪 → 填入 OpenAI API Key（存在 localStorage，每個瀏覽器都要填一次）
+
+> **限制**：憑證下載功能無法用，因為它需要 Playwright 在本機跑（見情境 B）。
+
+### 情境 B：完整開發環境（含憑證下載腳本）
+
+新電腦要能改程式、跑 dev server、下載憑證 PDF。
+
+#### 前置需求
+
+- Node.js 20 以上
+- Git
+
+#### 步驟
+
+1. **Clone repo**
+
+   ```bash
+   git clone https://github.com/bryanHsiao/THSR-Ticket-Manager.git
+   cd THSR-Ticket-Manager
+   ```
+
+2. **安裝依賴**
+
+   ```bash
+   npm install
+   npx playwright install chromium
+   ```
+
+   Playwright 的瀏覽器不會跟 `npm install` 一起裝，`npm run receipt` 會用到。
+
+3. **建立 `.env` 檔案**（專案根目錄）
+
+   ```
+   VITE_GOOGLE_CLIENT_ID=<你的 Google OAuth Client ID>
+   ```
+
+   Client ID 從 [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials 找回舊的，或依照下方「Google Cloud Console 設定指南」建立新的。建議另外存進密碼管理器。
+
+4. **更新憑證下載指令的專案路徑**
+
+   ⚠️ [src/App.tsx](src/App.tsx) 裡 `handleDownloadReceipt` 有一行硬寫的專案路徑，新機器路徑不同要改：
+
+   ```ts
+   const projectDir = 'C:\\Users\\siaob\\code\\20260112-claude-code-spec-workflow';
+   ```
+
+5. **啟動 dev server 驗證**
+
+   ```bash
+   npm run dev
+   ```
+
+   到 `http://localhost:5173` 檢查能不能登入 Google、看到票券清單。
+
+6. **測試憑證下載腳本**
+
+   在網頁點下載憑證按鈕 → 複製指令 → 開 terminal 貼上執行 → 檢查 `downloads/高鐵憑證/` 有沒有 PDF。
+
+7. **（選）設定 GitHub Pages 自動部署**
+
+   若 fork 到自己 repo 才需要。到 GitHub → Settings → Pages 選 GitHub Actions 為來源，push 到 `main` 後看 Actions 頁確認 `Deploy to GitHub Pages` workflow 有跑起來。
+
+#### 需要另外備份的機密
+
+不會進 git、換機器要另外準備：
+
+| 項目 | 存哪 | 補救方法 |
+|---|---|---|
+| `VITE_GOOGLE_CLIENT_ID` | 本機 `.env` | Google Cloud Console → Credentials 找回 |
+| OpenAI API Key | 瀏覽器 localStorage | 到 [platform.openai.com](https://platform.openai.com/) 重新產生 |
+| 票券資料與照片 | Google Drive | 登入後自動同步下來 |
+
 ## OCR 辨識設定
 
 本應用程式使用 OpenAI GPT-4o 進行車票 OCR 辨識。
