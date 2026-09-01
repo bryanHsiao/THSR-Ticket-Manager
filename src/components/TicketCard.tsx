@@ -166,7 +166,7 @@ export function TicketCard({ ticket, onEdit, onDelete, onViewImage, onDownloadRe
   const [receiptPath, setReceiptPath] = useState<string | null>(null);
 
   useEffect(() => {
-    if (ticket.driveReceiptId) {
+    if (ticket.driveReceiptId || !import.meta.env.DEV) {
       setReceiptPath(null);
       return;
     }
